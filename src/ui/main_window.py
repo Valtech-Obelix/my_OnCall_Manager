@@ -2,11 +2,18 @@ from   PySide6.QtWidgets               import (  QMainWindow
                                                , QLabel
                                                , QWidget
                                                , QVBoxLayout
+                                               , QLabel
+                                               , QLineEdit
+                                               , QPushButton
+                                               , QMessageBox
                                               )
 
 
 APP_TITLE                              = 'my_OnCall_Manager'
-WELCOME_TEXT                           = 'Willkommen im my_OnCall_Manager'
+LABEL_NAME                             = 'Name'
+LABEL_EMAIL                            = 'E-Mail'
+BUTTON_SAVE                            = 'Speichern'
+MESSAGE_SUCCESS                        = 'Incident Analyst gespeichert'
 
 
 class MainWindow(QMainWindow):
@@ -21,8 +28,17 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         layout = QVBoxLayout()
 
-        label = QLabel(WELCOME_TEXT)
-        layout.addWidget(label)
+        self._name_input = QLineEdit()
+        self._email_input = QLineEdit()
+        self._save_button = QPushButton(BUTTON_SAVE)
+
+        layout.addWidget(QLabel(LABEL_NAME))
+        layout.addWidget(self._name_input)
+
+        layout.addWidget(QLabel(LABEL_EMAIL))
+        layout.addWidget(self._email_input)
+
+        layout.addWidget(self._save_button)
 
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
