@@ -1,5 +1,10 @@
-def main():
-    print("my_OnCall_Manager gestartet 🚀")
+from   src.app.application             import Application
 
-if __name__ == "__main__":
+
+def main():
+    app = Application()
+    app.run()
+
+
+if __name__ == '__main__':
     main()
