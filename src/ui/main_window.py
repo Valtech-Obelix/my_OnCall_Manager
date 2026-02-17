@@ -44,6 +44,11 @@ class MainWindow(QMainWindow):
 
         self._save_button              = QPushButton(BUTTON_SAVE)
 
+        layout.addWidget(QLabel(LABEL_VORNAME))
+        layout.addWidget(self._vorname_input)
+
+        layout.addWidget(QLabel(LABEL_NACHNAME))
+        layout.addWidget(self._nachname_input)
 
         layout.addWidget(QLabel(LABEL_EMAIL))
         layout.addWidget(self._email_input)
