@@ -30,12 +30,12 @@ class Database:
             '''
             CREATE TABLE IF NOT EXISTS incident_analyst (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                vorname         TEXT NOT NULL,
+                vornamen        TEXT NOT NULL,
                 nachname        TEXT NOT NULL,
                 buchungsname    TEXT NOT NULL,
                 email           TEXT NOT NULL UNIQUE,
                 start_datum     TEXT NOT NULL,
-                end_datum       TEXT
+                ende_datum      TEXT
             )
             '''
         )

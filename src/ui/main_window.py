@@ -12,8 +12,8 @@ from     datetime                      import date
 APP_TITLE                              = 'my_OnCall_Manager'
 
 # Ref: UC-001 v0.2 – UI angepasst
-LABEL_VORNAME                          = 'Vornamen'
-LABEL_NACHNAME                         = 'Nachname'
+LABEL_VORNAMEN                      = 'Vornamen (getrennt durch Blanks)'
+LABEL_NACHNAME                        = 'Nachname(n)'
 LABEL_EMAIL                            = 'E-Mail'
 LABEL_START                            = 'Startdatum (YYYY-MM-DD)'
 LABEL_END                              = 'Enddatum (optional)'
@@ -36,16 +36,16 @@ class MainWindow(QMainWindow):
         layout                         = QVBoxLayout()
 
          # Ref: UC-001 v0.2 – neue Eingabefelder
-        self._vorname_input            = QLineEdit()
-        self._nachname_input           = QLineEdit()
+        self._vornamen_input        = QLineEdit()
+        self._nachname_input          = QLineEdit()
         self._email_input              = QLineEdit()
         self._start_input              = QLineEdit()
         self._end_input                = QLineEdit()
 
         self._save_button              = QPushButton(BUTTON_SAVE)
 
-        layout.addWidget(QLabel(LABEL_VORNAME))
-        layout.addWidget(self._vorname_input)
+        layout.addWidget(QLabel(LABEL_VORNAMEN))
+        layout.addWidget(self._vornamen_input)
 
         layout.addWidget(QLabel(LABEL_NACHNAME))
         layout.addWidget(self._nachname_input)
@@ -69,13 +69,13 @@ class MainWindow(QMainWindow):
     def _handle_save(self):
 
         # Ref: UC-001 v0.2 – neue Felder
-        vorname = self._vorname_input.text()
-        nachname = self._nachname_input.text()
-        email = self._email_input.text()
-        start = self._start_input.text()
-        end = self._end_input.text()
+        vornamen                                   = self._vornamen_input.text()
+        nachname                                     = self._nachname_input.text()
+        email                                         = self._email_input.text()
+        start                                         = self._start_input.text()
+        end                                           = self._end_input.text()
 
-        if not vorname or not nachname or not email or not start:
+        if not vornamen or not nachname or not email or not start:
             QMessageBox.warning(
                 self,
                 APP_TITLE,
@@ -84,8 +84,8 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            start_date = date.fromisoformat(start)
-            end_date = date.fromisoformat(end) if end else None
+            start_datum = date.fromisoformat(start)
+            ende_datum  = date.fromisoformat(end) if end else None
         except ValueError:
             QMessageBox.warning(
                 self,
@@ -96,16 +96,16 @@ class MainWindow(QMainWindow):
 
         # Übergabe an Application-Schicht
         self._application.add_incident_analyst(
-            vorname,
+            vornamen,
             nachname,
             email,
-            start_date,
-            end_date
+            start_datum,
+            ende_datum
         )
 
         QMessageBox.information(self, APP_TITLE, MESSAGE_SUCCESS)
 
-        self._vorname_input.clear()
+        self._vornamen_input.clear()
         self._nachname_input.clear()
         self._email_input.clear()
         self._start_input.clear()

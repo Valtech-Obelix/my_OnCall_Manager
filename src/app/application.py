@@ -4,6 +4,7 @@ from   src.ui.main_window                             import MainWindow
 from   src.infrastructure.database                    import Database
 from   src.infrastructure.incident_analyst_repository import IncidentAnalystRepository
 from   src.domain.incident_analyst                    import IncidentAnalyst
+from   datetime                                       import date
 
 
 class Application:
@@ -20,12 +21,13 @@ class Application:
 
         self._main_window = MainWindow(self)
 
-    def add_incident_analyst(self, p_name: str, p_email: str) -> IncidentAnalyst:
-        analyst = IncidentAnalyst(
-            id=None,
-            name=p_name,
-            email=p_email
-        )
+    def add_incident_analyst(self, 
+                             p_vornamen               : str, 
+                             p_nachname               : str,
+                             p_email                  : str,
+                             p_start_datum            : date,
+                             p_ende_datum             : date) -> IncidentAnalyst:
+        analyst = IncidentAnalyst(p_id=None, p_vornamen=p_vornamen, p_nachname=p_nachname, p_email=p_email, p_start_datum=p_start_datum, p_ende_datum=p_ende_datum)
 
         return self._repository.add(analyst)
 
