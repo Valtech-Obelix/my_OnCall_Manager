@@ -18,7 +18,7 @@ class Application:
             self._database.get_connection()
         )
 
-        self._main_window = MainWindow()
+        self._main_window = MainWindow(self)
 
     def add_incident_analyst(self, p_name: str, p_email: str) -> IncidentAnalyst:
         analyst = IncidentAnalyst(
