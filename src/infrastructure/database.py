@@ -1,3 +1,4 @@
+
 import sqlite3
 from   pathlib                         import Path
 
@@ -24,12 +25,17 @@ class Database:
     def initialize_schema(self):
         cursor = self._connection.cursor()
 
+        # Ref: UC-001 v0.2 – erweitertes Datenmodell IncidentAnalyst
         cursor.execute(
             '''
             CREATE TABLE IF NOT EXISTS incident_analyst (
-                id                     INTEGER PRIMARY KEY AUTOINCREMENT,
-                name                   TEXT NOT NULL,
-                email                  TEXT NOT NULL UNIQUE
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                vornamen        TEXT NOT NULL,
+                nachname        TEXT NOT NULL,
+                buchungsname    TEXT NOT NULL,
+                email           TEXT NOT NULL UNIQUE,
+                start_datum     TEXT NOT NULL,
+                ende_datum      TEXT
             )
             '''
         )
