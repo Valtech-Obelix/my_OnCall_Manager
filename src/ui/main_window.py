@@ -36,8 +36,8 @@ class MainWindow(QMainWindow):
         layout                         = QVBoxLayout()
 
          # Ref: UC-001 v0.2 – neue Eingabefelder
-        self._vornamen_input        = QLineEdit()
-        self._nachname_input          = QLineEdit()
+        self._vornamen_input           = QLineEdit()
+        self._nachname_input           = QLineEdit()
         self._email_input              = QLineEdit()
         self._start_input              = QLineEdit()
         self._end_input                = QLineEdit()
@@ -69,8 +69,8 @@ class MainWindow(QMainWindow):
     def _handle_save(self):
 
         # Ref: UC-001 v0.2 – neue Felder
-        vornamen                                   = self._vornamen_input.text()
-        nachname                                     = self._nachname_input.text()
+        vornamen                                      = self._vornamen_input.text()
+        nachname                                      = self._nachname_input.text()
         email                                         = self._email_input.text()
         start                                         = self._start_input.text()
         end                                           = self._end_input.text()
@@ -84,8 +84,8 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            start_datum = date.fromisoformat(start)
-            ende_datum  = date.fromisoformat(end) if end else None
+            start_datum = self._parse_date(start)
+            ende_datum  = self._parse_date(end) if end else None
         except ValueError:
             QMessageBox.warning(
                 self,
@@ -110,3 +110,31 @@ class MainWindow(QMainWindow):
         self._email_input.clear()
         self._start_input.clear()
         self._end_input.clear()
+
+    # Ref: UC-001 v0.2 – deutsche Datumsformate unterstützen
+    def _parse_date(self, p_value: str) -> date:
+        """
+        Unterstützt:
+        1.1.26
+        01.01.2026
+        1.01.26
+        """
+
+        parts = p_value.strip().split('.')
+
+        if len(parts) != 3:
+            raise ValueError('Ungültiges Datumsformat.')
+
+        day, month, year = parts
+
+        day = int(day)
+        month = int(month)
+
+        # 2-stellige Jahreszahl behandeln
+        if len(year) == 2:
+            year = int(year)
+            year += 2000 if year < 50 else 1900
+        else:
+            year = int(year)
+
+        return date(year, month, day)
