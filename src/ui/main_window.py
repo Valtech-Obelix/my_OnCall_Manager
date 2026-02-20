@@ -64,7 +64,13 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
+        # Ref: UC-002 v0.1 – Liste der Incident Analysts
+        self._analyst_list = QListWidget()
+        layout.addWidget(self._analyst_list)
+
         self._save_button.clicked.connect(self._handle_save)
+
+        self._refresh_analyst_list()
 
     def _handle_save(self):
 
@@ -111,6 +117,8 @@ class MainWindow(QMainWindow):
         self._start_input.clear()
         self._end_input.clear()
 
+        self._refresh_analyst_list()
+
     # Ref: UC-001 v0.2 – deutsche Datumsformate unterstützen
     def _parse_date(self, p_value: str) -> date:
         """
@@ -138,3 +146,15 @@ class MainWindow(QMainWindow):
             year = int(year)
 
         return date(year, month, day)
+
+    # Ref: UC-002 v0.1 – Liste aktualisieren
+    def _refresh_analyst_list(self):
+
+        self._analyst_list.clear()
+
+        analysts = self._application.get_all_incident_analysts()
+
+        for analyst in analysts:
+            self._analyst_list.addItem(
+                f"{analyst.buchungsname} ({analyst.email})"
+            )
