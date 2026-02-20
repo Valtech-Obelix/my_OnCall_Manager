@@ -7,6 +7,7 @@ from     PySide6.QtWidgets                                 import (  QDialog
                                                                    , QWidget
                                                                   )
 from     PySide6.QtCore                                    import (Qt)
+from     src.ui.incident_analyst_add_dialog                import IncidentAnalystAddDialog
 
 APP_TITLE = "Incident Analyst Verwaltung"
 LABEL_CURRENT = "Aktuelle Incidentanalysten"
