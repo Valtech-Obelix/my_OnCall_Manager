@@ -83,3 +83,18 @@ class IncidentAnalystRepository:
             )
 
         return analysts
+
+    # Ref: UC-002 v0.1 – Löschen eines Incident Analysts
+    def delete(self, p_id: int) -> None:
+
+        cursor = self._connection.cursor()
+
+        cursor.execute(
+            f'''
+            DELETE FROM {TABLE_NAME}
+            WHERE id = ?
+            ''',
+            (p_id,)
+        )
+
+        self._connection.commit()
