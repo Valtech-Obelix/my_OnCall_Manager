@@ -1,15 +1,16 @@
-from PySide6.QtWidgets import (
-    QDialog,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QVBoxLayout,
-    QHBoxLayout,
-    QMessageBox,
-    QDateEdit
-)
-
-from PySide6.QtCore import QDate
+from PySide6.QtWidgets                                     import (  QDialog
+                                                                   , QLabel
+                                                                   , QLineEdit
+                                                                   , QPushButton
+                                                                   , QVBoxLayout
+                                                                   , QHBoxLayout
+                                                                   , QMessageBox
+                                                                   , QFormLayout
+                                                                   , QDateEdit
+                                                                  )
+from PySide6.QtCore                                        import (  QDate
+                                                                   , Qt
+                                                                  )
 from datetime import date
 
 
@@ -31,35 +32,27 @@ class IncidentAnalystAddDialog(QDialog):
 
         layout = QVBoxLayout()
 
-        # Vorname
-        layout.addWidget(QLabel("Vorname"))
+        layout = QVBoxLayout()
+
+        form_layout = QFormLayout()
+        form_layout.setLabelAlignment(Qt.AlignLeft)
+        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        form_layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
+
         self._vorname_input = QLineEdit()
-        layout.addWidget(self._vorname_input)
-
-        # Nachname
-        layout.addWidget(QLabel("Nachname"))
         self._nachname_input = QLineEdit()
-        layout.addWidget(self._nachname_input)
-
-        # Email
-        layout.addWidget(QLabel("E-Mail"))
         self._email_input = QLineEdit()
-        layout.addWidget(self._email_input)
 
-        # Startdatum
-        layout.addWidget(QLabel("Startdatum"))
         self._start_input = QDateEdit()
         self._start_input.setCalendarPopup(True)
         self._start_input.setDate(QDate.currentDate())
-        layout.addWidget(self._start_input)
 
-        # Enddatum
-        layout.addWidget(QLabel("Enddatum (optional)"))
-        self._end_input = QDateEdit()
-        self._end_input.setCalendarPopup(True)
-        self._end_input.setSpecialValueText("Kein Enddatum")
-        self._end_input.setDate(QDate.currentDate())
-        layout.addWidget(self._end_input)
+        form_layout.addRow("Vorname.  :", self._vorname_input)
+        form_layout.addRow("Nachname  :", self._nachname_input)
+        form_layout.addRow("E-Mail.   :", self._email_input)
+        form_layout.addRow("Startdatum:", self._start_input)
+
+        layout.addLayout(form_layout)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -92,11 +85,7 @@ class IncidentAnalystAddDialog(QDialog):
             start_qdate.day()
         )
 
-        end_date = date(
-            end_qdate.year(),
-            end_qdate.month(),
-            end_qdate.day()
-        )
+        end_date = None
 
         try:
             self._application.add_incident_analyst(
