@@ -58,6 +58,7 @@ class IncidentAnalystDialog(QDialog):
 
         main_layout.addLayout(content_layout)
 
+        self._add_button.clicked.connect(self._handle_add)
         self._delete_button.clicked.connect(self._handle_delete)
 
         self.setLayout(main_layout)
@@ -75,6 +76,13 @@ class IncidentAnalystDialog(QDialog):
 
             item = self._analyst_list.item(self._analyst_list.count() - 1)
             item.setData(Qt.UserRole, analyst.id)
+
+    def _handle_add(self):
+
+        dialog = IncidentAnalystAddDialog(self._application, self)
+
+        if dialog.exec():
+            self._refresh_list()
 
     def _handle_delete(self):
 
