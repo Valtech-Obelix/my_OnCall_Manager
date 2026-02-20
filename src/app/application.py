@@ -34,3 +34,12 @@ class Application:
     def run(self):
         self._main_window.show()
         return self._qt_app.exec()
+
+    # Ref: UC-002 v0.1 – Laden aller Incident Analysts
+    def get_all_incident_analysts(self):
+        return self._repository.get_all()
+
+    # Ref: UC-002 v0.1 – Löschen eines Incident Analysts
+    def delete_incident_analyst(self, p_id: int):
+        self._repository.delete(p_id)
+        
