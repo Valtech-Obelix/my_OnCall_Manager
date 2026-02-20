@@ -1,5 +1,6 @@
-import sqlite3
-from   src.domain.incident_analyst     import IncidentAnalyst
+import   sqlite3
+from     src.domain.incident_analyst                  import IncidentAnalyst
+from     datetime                                     import date
 
 
 TABLE_NAME                             = 'incident_analyst'
@@ -46,3 +47,39 @@ class IncidentAnalystRepository:
                                p_start_datum = p_analyst.start_datum, 
                                p_ende_datum  = p_analyst.ende_datum
         )
+    
+    # Ref: UC-002 v0.1 – Laden aller Incident Analysts
+    def get_all(self) -> list[IncidentAnalyst]:
+
+        cursor = self._connection.cursor()
+
+        cursor.execute(
+            f'''
+            SELECT id,
+                vornamen,
+                nachname,
+                email,
+                start_datum,
+                ende_datum
+            FROM {TABLE_NAME}
+            ORDER BY nachname, vornamen
+            '''
+        )
+
+        rows = cursor.fetchall()
+
+        analysts = []
+
+        for row in rows:
+            analysts.append(
+                IncidentAnalyst(
+                    p_id=row[0],
+                    p_vornamen=row[1],
+                    p_nachname=row[2],
+                    p_email=row[3],
+                    p_start_datum=date.fromisoformat(row[4]),
+                    p_ende_datum=date.fromisoformat(row[5]) if row[5] else None
+                )
+            )
+
+        return analysts
