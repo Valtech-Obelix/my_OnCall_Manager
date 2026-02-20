@@ -5,20 +5,23 @@ from   PySide6.QtWidgets               import (  QMainWindow
                                                , QLineEdit
                                                , QPushButton
                                                , QMessageBox
+                                               , QListWidget
                                               )
+from     PySide6.QtCore                import Qt
 from     datetime                      import date
 
 
 APP_TITLE                              = 'my_OnCall_Manager'
 
 # Ref: UC-001 v0.2 – UI angepasst
-LABEL_VORNAMEN                      = 'Vornamen (getrennt durch Blanks)'
-LABEL_NACHNAME                        = 'Nachname(n)'
+LABEL_VORNAMEN                         = 'Vornamen (getrennt durch Blanks)'
+LABEL_NACHNAME                         = 'Nachname(n)'
 LABEL_EMAIL                            = 'E-Mail'
 LABEL_START                            = 'Startdatum (YYYY-MM-DD)'
 LABEL_END                              = 'Enddatum (optional)'
 
 BUTTON_SAVE                            = 'Speichern'
+BUTTON_DELETE                          = 'Ausgewählte(n) Incident Analysten löschen'
 MESSAGE_SUCCESS                        = 'Incident Analyst gespeichert'
 
 
@@ -43,6 +46,7 @@ class MainWindow(QMainWindow):
         self._end_input                = QLineEdit()
 
         self._save_button              = QPushButton(BUTTON_SAVE)
+        self._delete_button            = QPushButton(BUTTON_DELETE)
 
         layout.addWidget(QLabel(LABEL_VORNAMEN))
         layout.addWidget(self._vornamen_input)
@@ -60,6 +64,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._end_input)
 
         layout.addWidget(self._save_button)
+        layout.addWidget(self._delete_button)
 
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
@@ -69,6 +74,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._analyst_list)
 
         self._save_button.clicked.connect(self._handle_save)
+        self._delete_button.clicked.connect(self._handle_delete)
 
         self._refresh_analyst_list()
 
@@ -155,6 +161,37 @@ class MainWindow(QMainWindow):
         analysts = self._application.get_all_incident_analysts()
 
         for analyst in analysts:
-            self._analyst_list.addItem(
-                f"{analyst.buchungsname} ({analyst.email})"
+            item_text = f"{analyst.buchungsname} ({analyst.email})"
+            self._analyst_list.addItem(item_text)
+
+            item = self._analyst_list.item(self._analyst_list.count() - 1)
+            item.setData(Qt.UserRole, analyst.id)
+
+    # Ref: UC-002 v0.1 – Löschen eines Incident Analysts
+    def _handle_delete(self):
+
+        selected_item = self._analyst_list.currentItem()
+
+        if not selected_item:
+            QMessageBox.warning(
+                self,
+                APP_TITLE,
+                'Bitte zuerst einen Incident Analyst auswählen.'
             )
+            return
+
+        reply = QMessageBox.question(
+            self,
+            APP_TITLE,
+            'Möchten Sie den ausgewählten Incident Analyst wirklich löschen?',
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
+        analyst_id = selected_item.data(Qt.UserRole)
+
+        self._application.delete_incident_analyst(analyst_id)
+
+        self._refresh_analyst_list()
