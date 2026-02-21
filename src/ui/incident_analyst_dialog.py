@@ -5,6 +5,7 @@ from     PySide6.QtWidgets                                 import (  QDialog
                                                                    , QVBoxLayout
                                                                    , QHBoxLayout
                                                                    , QWidget
+                                                                   , QMessageBox
                                                                   )
 from     PySide6.QtCore                                    import (Qt)
 from     src.ui.incident_analyst_add_dialog                import IncidentAnalystAddDialog
@@ -40,20 +41,21 @@ class IncidentAnalystDialog(QDialog):
 
         # Liste
         self._analyst_list = QListWidget()
+        self._analyst_list.itemSelectionChanged.connect(self._update_button_state)
         content_layout.addWidget(self._analyst_list)
 
         # Button-Spalte
         button_layout = QVBoxLayout()
-
         self._add_button = QPushButton("+")
-        self._delete_button = QPushButton("🗑")
         self._add_button.setFixedWidth(60)
-        self._delete_button.setFixedWidth(60)   
-
         button_layout.addWidget(self._add_button)
-        button_layout.addWidget(self._delete_button)
-        button_layout.addStretch()
 
+        self._delete_button = QPushButton("🗑")
+        self._delete_button.setFixedWidth(60)   
+        self._delete_button.setEnabled(False)
+        button_layout.addWidget(self._delete_button)
+
+        button_layout.addStretch()
         content_layout.addLayout(button_layout)
 
         main_layout.addLayout(content_layout)
@@ -76,6 +78,13 @@ class IncidentAnalystDialog(QDialog):
 
             item = self._analyst_list.item(self._analyst_list.count() - 1)
             item.setData(Qt.UserRole, analyst.id)
+        
+        self._analyst_list.setCurrentRow(-1)
+
+    def _update_button_state(self):
+        selected = self._analyst_list.currentItem() is not None
+        self._delete_button.setEnabled(selected)
+
 
     def _handle_add(self):
 
@@ -89,6 +98,16 @@ class IncidentAnalystDialog(QDialog):
         selected_item = self._analyst_list.currentItem()
 
         if not selected_item:
+            return
+        
+        reply = QMessageBox.question(
+            self,
+            APP_TITLE,
+            "Ausgewählten Incident Analyst wirklich löschen?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
             return
 
         analyst_id = selected_item.data(Qt.UserRole)
