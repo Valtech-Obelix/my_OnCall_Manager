@@ -72,12 +72,11 @@ class IncidentAnalystAddDialog(QDialog):
 
     def _handle_save(self):
 
-        vorname = self._vorname_input.text()
-        nachname = self._nachname_input.text()
-        email = self._email_input.text()
+        vorname     = self._vorname_input.text()
+        nachname    = self._nachname_input.text()
+        email       = self._email_input.text()
 
         start_qdate = self._start_input.date()
-        end_qdate = self._end_input.date()
 
         start_date = date(
             start_qdate.year(),
@@ -85,7 +84,7 @@ class IncidentAnalystAddDialog(QDialog):
             start_qdate.day()
         )
 
-        end_date = None
+        end_date    = None
 
         try:
             self._application.add_incident_analyst(
