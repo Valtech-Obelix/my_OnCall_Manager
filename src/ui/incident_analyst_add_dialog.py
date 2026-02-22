@@ -94,7 +94,7 @@ class IncidentAnalystAddDialog(QDialog):
                 start_date,
                 end_date
             )
-        except Exception as e:
+        except DomainException as e:
             QMessageBox.warning(self, APP_TITLE, str(e))
             return
 
