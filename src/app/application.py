@@ -19,7 +19,7 @@ class Application:
         self._logger.info(" Application started ")
         self._logger.info('=====================')
         self._logger.info('')
-        
+
         self._qt_app = QApplication(sys.argv)
 
         self._database = Database()
@@ -61,4 +61,8 @@ class Application:
     # Ref: UC-002 v0.1 – Löschen eines Incident Analysts
     def delete_incident_analyst(self, p_id: int):
         self._incident_analyst_service.delete(p_id)
+
+    # Ref: C-003: v.01 - Deaktiveren eines Incident Analysten
+    def deactivate_incident_analyst(self, p_id: int, p_ende_datum):
+        self._incident_analyst_service.deactivate(p_id, p_ende_datum)
         
