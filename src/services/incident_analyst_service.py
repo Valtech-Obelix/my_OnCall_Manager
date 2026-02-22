@@ -56,6 +56,24 @@ class IncidentAnalystService:
             self._logger.error("Error while deleting IncidentAnalyst: %s", str(e), exc_info=True)
             raise
 
+    # Ref: UC-003
+    def deactivate(self, p_id: int, p_ende_datum: date):
+
+        analysts = self._repository.get_all()
+        analyst = next((a for a in analysts if a.id == p_id), None)
+
+        if analyst is None:
+            raise DomainException("IncidentAnalyst nicht gefunden.")
+
+        if not analyst.is_active:
+            raise DomainException("IncidentAnalyst ist bereits deaktiviert.")
+
+        if p_ende_datum < analyst.start_datum:
+            raise DomainException("Enddatum darf nicht vor Startdatum liegen.")
+
+        self._logger.info("Deactivating IncidentAnalyst id=%s", p_id)
+
+        self._repository.update_end_date(p_id, p_ende_datum)
 
     def get_all(self):
         return self._repository.get_all()

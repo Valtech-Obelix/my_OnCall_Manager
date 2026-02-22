@@ -20,10 +20,11 @@ from     src.ui.incident_analyst_add_dialog                import IncidentAnalys
 from     src.domain.exceptions                             import DomainException
 from     datetime                                          import date
 from     typing                                            import Callable
+from     pathlib                                           import Path
 
-APP_TITLE = "Incident Analyst Verwaltung"
-LABEL_CURRENT = "Aktuelle Incidentanalysten"
-
+APP_TITLE                                                  =      'Verwaltung der Incident Analysten'
+LABEL_CURRENT                                              =      'Aktuelle Incidentanalysten'
+ICON_PATH                                                  =      Path(__file__).parent.parent / 'resources' / 'icons'
 
 class IncidentAnalystDialog(QDialog):
 
@@ -44,7 +45,7 @@ class IncidentAnalystDialog(QDialog):
                             ) -> QPushButton:
         button = QPushButton()
         button.setFixedSize(p_width, 40)
-        button.setIconSize(QSize(24, 24))
+        button.setIconSize(QSize(28, 28))
         button.setIcon(p_icon)
         button.setEnabled(p_status)
         button.setToolTip(p_tool_tip)
@@ -85,7 +86,7 @@ class IncidentAnalystDialog(QDialog):
         # Button-Spalte
         button_layout = QVBoxLayout()
         self._add_button = self._create_icon_button(
-              self.style().standardIcon(QStyle.SP_FileDialogNewFolder)
+              QIcon(str(ICON_PATH / 'user-plus.svg'))
             , 60
             , True
             , 'Neuen Incident Analysten anlegen'
@@ -95,7 +96,7 @@ class IncidentAnalystDialog(QDialog):
 
         # Ref: UC-002_IA_Löschen
         self._delete_button = self._create_icon_button(
-              self.style().standardIcon(QStyle.SP_TrashIcon)
+              QIcon(str(ICON_PATH / 'user-minus.svg'))
             , 60
             , False
             , 'ausgewählten Incident Analyst löschen'
@@ -105,7 +106,7 @@ class IncidentAnalystDialog(QDialog):
 
         # Ref: UC-003_IA_deaktiveren
         self._deactivate_button = self._create_icon_button(
-              self.style().standardIcon(QStyle.SP_BrowserStop)
+              QIcon(str(ICON_PATH / 'user-pause.svg'))
             , 60
             , False
             , 'ausgewählten Incident Analysten deaktivieren'
@@ -188,6 +189,16 @@ class IncidentAnalystDialog(QDialog):
     # Ref: UC-003_IA_deaktivieren
     def _handle_deactivate(self):
 
+        def save():
+            qdate = date_edit.date()
+            ende = date(qdate.year(), qdate.month(), qdate.day())
+            try:
+                self._application.deactivate_incident_analyst(analyst_id, ende)
+                dialog.accept()
+                self._refresh_list()
+            except DomainException as e:
+                QMessageBox.warning(self, APP_TITLE, str(e))
+
         selected_item = self._analyst_list.currentItem()
 
         if not selected_item:
@@ -222,16 +233,6 @@ class IncidentAnalystDialog(QDialog):
 
         cancel_button.clicked.connect(dialog.reject)
         save_button.clicked.connect(save)
-
-        def save():
-            qdate = date_edit.date()
-            ende = date(qdate.year(), qdate.month(), qdate.day())
-            try:
-                self._application.deactivate_incident_analyst(analyst_id, ende)
-                dialog.accept()
-                self._refresh_list()
-            except DomainException as e:
-                QMessageBox.warning(self, APP_TITLE, str(e))
 
         dialog.exec()
         
