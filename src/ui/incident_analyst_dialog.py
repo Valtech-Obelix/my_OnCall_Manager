@@ -7,10 +7,19 @@ from     PySide6.QtWidgets                                 import (  QDialog
                                                                    , QWidget
                                                                    , QMessageBox
                                                                    , QComboBox
+                                                                   , QListWidgetItem
+                                                                   , QDateEdit
+                                                                   , QStyle
                                                                   )
-from     PySide6.QtCore                                    import (Qt)
+from     PySide6.QtCore                                    import (  Qt
+                                                                   , QDate
+                                                                   , QSize
+                                                                  )
+from     PySide6.QtGui                                     import QIcon
 from     src.ui.incident_analyst_add_dialog                import IncidentAnalystAddDialog
 from     src.domain.exceptions                             import DomainException
+from     datetime                                          import date
+from     typing                                            import Callable
 
 APP_TITLE = "Incident Analyst Verwaltung"
 LABEL_CURRENT = "Aktuelle Incidentanalysten"
@@ -25,6 +34,25 @@ class IncidentAnalystDialog(QDialog):
 
         self._setup_ui()
         self._refresh_list()
+
+    def _create_icon_button(  self
+                            , p_icon                       : QIcon
+                            , p_width                      : int
+                            , p_status                     : bool
+                            , p_tool_tip                   : str
+                            , p_callback                   : Callable | None = None
+                            ) -> QPushButton:
+        button = QPushButton()
+        button.setFixedSize(p_width, 40)
+        button.setIconSize(QSize(24, 24))
+        button.setIcon(p_icon)
+        button.setEnabled(p_status)
+        button.setToolTip(p_tool_tip)
+        if p_callback:
+            button.clicked.connect(p_callback)
+        button.setCursor(Qt.PointingHandCursor)
+
+        return button
 
     # Ref: UI-Strukturierung für IncidentAnalyst Modul
     def _setup_ui(self):
@@ -56,29 +84,39 @@ class IncidentAnalystDialog(QDialog):
 
         # Button-Spalte
         button_layout = QVBoxLayout()
-        self._add_button = QPushButton("+")
-        self._add_button.setFixedWidth(60)
+        self._add_button = self._create_icon_button(
+              self.style().standardIcon(QStyle.SP_FileDialogNewFolder)
+            , 60
+            , True
+            , 'Neuen Incident Analysten anlegen'
+            , self._handle_add
+            )
         button_layout.addWidget(self._add_button)
 
         # Ref: UC-002_IA_Löschen
-        self._delete_button = QPushButton("🗑")
-        self._delete_button.setFixedWidth(60)   
-        self._delete_button.setEnabled(False)
+        self._delete_button = self._create_icon_button(
+              self.style().standardIcon(QStyle.SP_TrashIcon)
+            , 60
+            , False
+            , 'ausgewählten Incident Analyst löschen'
+            , self._handle_delete
+            )
         button_layout.addWidget(self._delete_button)
 
         # Ref: UC-003_IA_deaktiveren
-        self._deactivate_button = QPushButton("Deaktivieren")
+        self._deactivate_button = self._create_icon_button(
+              self.style().standardIcon(QStyle.SP_BrowserStop)
+            , 60
+            , False
+            , 'ausgewählten Incident Analysten deaktivieren'
+            , self._handle_deactivate
+            )
         button_layout.addWidget(self._deactivate_button)
-        self._deactivate_button.setEnabled(False)
-        self._deactivate_button.clicked.connect(self._handle_deactivate)
-
+    
         button_layout.addStretch()
         content_layout.addLayout(button_layout)
 
         main_layout.addLayout(content_layout)
-
-        self._add_button.clicked.connect(self._handle_add)
-        self._delete_button.clicked.connect(self._handle_delete)
 
         self.setLayout(main_layout)
 
@@ -158,20 +196,32 @@ class IncidentAnalystDialog(QDialog):
         analyst_id = selected_item.data(Qt.UserRole)
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("Enddatum festlegen")
+        dialog.setWindowTitle("Incident Analyst deaktivieren")
 
         layout = QVBoxLayout()
+
+        label = QLabel("Inaktiv ab dem:")
+        layout.addWidget(label)
 
         date_edit = QDateEdit()
         date_edit.setCalendarPopup(True)
         date_edit.setDate(QDate.currentDate())
-
         layout.addWidget(date_edit)
 
-        button = QPushButton("Speichern")
-        layout.addWidget(button)
+        button_layout = QHBoxLayout()
+
+        save_button = QPushButton("Speichern")
+        cancel_button = QPushButton("Abbrechen")
+
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(cancel_button)
+
+        layout.addLayout(button_layout)
 
         dialog.setLayout(layout)
+
+        cancel_button.clicked.connect(dialog.reject)
+        save_button.clicked.connect(save)
 
         def save():
             qdate = date_edit.date()
@@ -182,8 +232,6 @@ class IncidentAnalystDialog(QDialog):
                 self._refresh_list()
             except DomainException as e:
                 QMessageBox.warning(self, APP_TITLE, str(e))
-
-        button.clicked.connect(save)
 
         dialog.exec()
         
