@@ -2,7 +2,7 @@
 
 import   re
 from     datetime                                 import date
-
+from     src.domain.exceptions                    import DomainException
 
 class IncidentAnalyst:
     """
@@ -45,16 +45,16 @@ class IncidentAnalyst:
     def _validate(self) -> None:
 
         if not self.vornamen:
-            raise ValueError('Vornamen darf nicht leer sein.')
+            raise DomainException('Vornamen darf nicht leer sein.')
 
         if not self.nachname:
-            raise ValueError('Nachname darf nicht leer sein.')
+            raise DomainException('Nachname darf nicht leer sein.')
 
         if not self._is_valid_email():
-            raise ValueError('Ungültiges Email-Format.')
+            raise DomainException('Ungültiges Email-Format.')
 
         if self.ende_datum and self.ende_datum < self.start_datum:
-            raise ValueError('Enddatum darf nicht vor Startdatum liegen.')
+            raise DomainException('Enddatum darf nicht vor Startdatum liegen.')
 
     def _is_valid_email(self) -> bool:
         pattern = r'^[^@]+@[^@]+\.[^@]+$'
