@@ -10,23 +10,29 @@ class IncidentAnalystService:
         self._repository = p_repository
 
     # Ref: UC-001
-    def create(
-        self,
-        p_vornamen,
-        p_nachname,
-        p_email,
-        p_start_datum,
-        p_ende_datum=None
-    ):
+    def create(  self
+               , p_vornamen
+               , p_nachname
+               , p_email
+               , p_start_datum
+               , p_ende_datum=None
+              ):
+        self._logger.debug(  "Input data: %s %s %s %s %s"
+                           , p_vornamen
+                           , p_nachname
+                           , p_email
+                           , p_start_datum
+                           , p_ende_datum
+                        )
+                                
 
-        analyst = IncidentAnalyst(
-            p_id=None,
-            p_vornamen=p_vornamen,
-            p_nachname=p_nachname,
-            p_email=p_email,
-            p_start_datum=p_start_datum,
-            p_ende_datum=p_ende_datum
-        )
+        analyst = IncidentAnalyst(  p_id=None,
+                                  , p_vornamen    = p_vornamen
+                                  , p_nachname    = p_nachname
+                                  , p_email       = p_email
+                                  , p_start_datum = p_start_datum
+                                  , p_ende_datum  = p_ende_datum
+                                 )
 
         self._logger.info(
             "Creating IncidentAnalyst: %s, %s",
@@ -38,12 +44,16 @@ class IncidentAnalystService:
 
     # Ref: UC-002
     def delete(self, p_id: int):
+        self._logger.debug("Deleting IncidentAnalyst with id=%s", p_id)
+
         self._repository.delete(p_id)
 
         self._logger.info(
             "Deleting IncidentAnalyst with id=%s",
             p_id
         )
+
+        self._logger.debug("Delete operation executed")
 
 
     def get_all(self):
