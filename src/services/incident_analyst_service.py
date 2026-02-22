@@ -1,6 +1,8 @@
 # incident_analyst_service.py
 import   logging
+from     datetime                                          import date
 from     src.domain.incident_analyst                       import IncidentAnalyst
+from     src.domain.exceptions                             import DomainException
 
 class IncidentAnalystService:
 
