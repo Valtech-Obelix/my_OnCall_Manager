@@ -98,3 +98,20 @@ class IncidentAnalystRepository:
         )
 
         self._connection.commit()
+
+    # Ref: UC-003 – Enddatum setzen
+    def update_end_date(self, p_id: int, p_ende_datum):
+
+        cursor = self._connection.cursor()
+
+        cursor.execute(
+            f'''
+            UPDATE {TABLE_NAME}
+            SET ende_datum = ?
+            WHERE id = ?
+            ''',
+            (p_ende_datum.isoformat(), p_id)
+        )
+
+        self._connection.commit()
+        
