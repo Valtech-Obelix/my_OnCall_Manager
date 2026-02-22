@@ -41,6 +41,10 @@ class IncidentAnalyst:
     def buchungsname(self) -> str:
         return f'{self.nachname}, {self.vornamen}'
 
+    @property
+    def is_active(self) -> bool:
+        return self.ende_datum is None
+
     # Ref: UC-001 v0.2 – Erweiterte Validierung
     def _validate(self) -> None:
 
