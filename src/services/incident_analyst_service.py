@@ -1,7 +1,7 @@
 # incident_analyst_service.py
 import   logging
 from     src.domain.incident_analyst                       import IncidentAnalyst
-d
+
 class IncidentAnalystService:
 
     def __init__(self, p_repository):
@@ -25,7 +25,7 @@ class IncidentAnalystService:
                         )
                                 
         try:
-            analyst = IncidentAnalyst(  p_id=None,
+            analyst = IncidentAnalyst(  p_id      = None
                                   , p_vornamen    = p_vornamen
                                   , p_nachname    = p_nachname
                                   , p_email       = p_email

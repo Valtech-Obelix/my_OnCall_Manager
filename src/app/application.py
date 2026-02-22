@@ -14,8 +14,12 @@ class Application:
     def __init__(self):
         setup_logging()
         self._logger = logging.getLogger(__name__)
-        self._logger.info("Application started")
-
+        self._logger.info('')
+        self._logger.info('=====================')
+        self._logger.info(" Application started ")
+        self._logger.info('=====================')
+        self._logger.info('')
+        
         self._qt_app = QApplication(sys.argv)
 
         self._database = Database()
