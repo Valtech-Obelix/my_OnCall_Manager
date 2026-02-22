@@ -1,4 +1,5 @@
 import   sys
+import   logging
 from     PySide6.QtWidgets                                 import QApplication
 from     datetime                                          import date
 
@@ -6,10 +7,15 @@ from     src.ui.main_window                                import MainWindow
 from     src.infrastructure.database                       import Database
 from     src.infrastructure.incident_analyst_repository    import IncidentAnalystRepository
 from     src.services.incident_analyst_service             import IncidentAnalystService
+from     src.infrastructure.logging_config                 import setup_logging
 
 class Application:
 
     def __init__(self):
+        setup_logging()
+        self._logger = logging.getLogger(__name__)
+        self._logger.info("Application started")
+
         self._qt_app = QApplication(sys.argv)
 
         self._database = Database()
