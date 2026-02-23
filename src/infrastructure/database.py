@@ -40,4 +40,29 @@ class Database:
             '''
         )
 
+        # Ref: UC-004 v0.1 – Shift Tabelle
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS shifts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project TEXT NOT NULL,
+                schedule_id TEXT NOT NULL,
+                analyst_name TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL
+            )
+            '''
+        )
+
+        # Ref: UC-004 v0.1 – Import History
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS import_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source TEXT NOT NULL UNIQUE,
+                last_import TEXT NOT NULL
+            )
+            '''
+        )
+
         self._connection.commit()
