@@ -1,0 +1,98 @@
+# UC-004 – OpsGenie Schichten importieren
+
+## Ziel
+Als           Administrator  
+möchte        ich aus OpsGenie die Schichten eines bestimmten Projektes einlesen  
+um            die Verteilung der Schichten auf die Incident-Analysten auswerten zu können.
+
+---
+
+## Modul-Zuordnung
+- UI.           : opsgenie_import_dialog.py
+- Geschäftslogik: opsgenie_service.py
+- Datenhaltung. : shift_repository.py
+- Integration.  : opsgenie_client.py
+
+---
+
+## Akteur
+Administrator
+
+---
+
+## Vorbedingungen
+- API-Zugang zu OpsGenie ist konfiguriert.
+- Projektname oder Projekt-ID ist bekannt.
+- Incident-Analysten existieren im System.
+
+---
+
+## Trigger
+- Auswahl „Schichten importieren“ im Hauptmenü.
+
+---
+
+## Hauptablauf
+01. Administrator öffnet den Import-Dialog.
+02. Administrator wählt ein Projekt.
+03. Administrator startet den Import.
+04. System ruft über die OpsGenie-API die Schichten ab.
+05. System speichert die Schichtdaten lokal.
+06. System ordnet Schichten den Incident-Analysten zu.
+07. System zeigt Import-Ergebnis an.
+
+---
+
+## Alternativabläufe
+
+### A1 – API nicht erreichbar
+- Fehlermeldung anzeigen
+- Fehler loggen
+
+### A2 – Authentifizierungsfehler
+- Fehlermeldung anzeigen
+- Kein Import
+
+### A3 – Projekt nicht gefunden
+- Fehlermeldung anzeigen
+
+---
+
+## Akzeptanzkriterien
+- Schichten werden korrekt aus OpsGenie gelesen.
+- Schichten werden lokal gespeichert.
+- Schichten sind Incident-Analysten zugeordnet.
+- Fehler werden geloggt.
+
+---
+
+## Technische Hinweise
+
+### Neue Komponenten
+
+- opsgenie_client.py  
+  → kapselt HTTP-API-Aufrufe
+
+- opsgenie_service.py  
+  → Business-Logik für Import
+
+- shift_repository.py  
+  → Speichert Schichtdaten
+
+### Datenmodell (neu)
+
+Tabelle: shifts
+
+- id INTEGER PRIMARY KEY
+- analyst_id INTEGER (FK)
+- project TEXT
+- start_time DATETIME
+- end_time DATETIME
+
+---
+
+## Status
+geplant
+
+## Version
+0.1
