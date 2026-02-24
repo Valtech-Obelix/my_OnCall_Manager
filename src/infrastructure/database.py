@@ -49,7 +49,8 @@ class Database:
                 schedule_id TEXT NOT NULL,
                 analyst_name TEXT NOT NULL,
                 start_time TEXT NOT NULL,
-                end_time TEXT NOT NULL
+                end_time TEXT NOT NULL,
+                UNIQUE(schedule_id, analyst_name, start)
             )
             '''
         )
