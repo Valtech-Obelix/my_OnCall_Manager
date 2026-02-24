@@ -54,7 +54,7 @@ class ShiftRepository:
 
         cursor.executemany(
             '''
-            INSERT INTO shifts (project, schedule_id, analyst_name, start_time, end_time)
+            INSERT OR IGNORE INTO shifts (project, schedule_id, analyst_name, start_time, end_time)
             VALUES (?, ?, ?, ?, ?)
             ''',
             [
