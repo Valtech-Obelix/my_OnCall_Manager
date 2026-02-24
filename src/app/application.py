@@ -8,6 +8,9 @@ from     src.infrastructure.database                       import Database
 from     src.infrastructure.incident_analyst_repository    import IncidentAnalystRepository
 from     src.services.incident_analyst_service             import IncidentAnalystService
 from     src.infrastructure.logging_config                 import setup_logging
+from     src.domain.incident_analyst                       import IncidentAnalyst
+from     src.infrastructure.shift_repository               import ShiftRepository
+from     src.services.opsgenie_service                     import OpsGenieService
 
 class Application:
 
@@ -25,11 +28,12 @@ class Application:
         self._database = Database()
         self._database.initialize_schema()
 
-        repository = IncidentAnalystRepository(
-            self._database.get_connection()
-        )
-
+        repository = IncidentAnalystRepository(self._database.get_connection())
         self._incident_analyst_service = IncidentAnalystService(repository)
+
+        # Ref: UC-004 – Shift Repository + OpsGenie Service
+        self._shift_repository = ShiftRepository(self._database.get_connection())
+        self._opsgenie_service = OpsGenieService(self._shift_repository)
 
         self._main_window = MainWindow(self)
 
@@ -66,3 +70,6 @@ class Application:
     def deactivate_incident_analyst(self, p_id: int, p_ende_datum):
         self._incident_analyst_service.deactivate(p_id, p_ende_datum)
         
+    # Ref: UC-004 – Import OpsGenie Schedule
+    def import_opsgenie_schedule(self, p_schedule_id: str) -> int:
+        return self._opsgenie_service.import_schedule(p_schedule_id)
