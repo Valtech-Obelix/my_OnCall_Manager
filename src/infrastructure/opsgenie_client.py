@@ -1,6 +1,12 @@
-import requests
-from datetime import datetime
-from typing import Any
+import  requests
+from    datetime                                            import datetime
+from    typing                                              import Any
+
+from    src.domain.exceptions                               import (  OpsGenieApiException
+                                                                    , OpsGenieAuthException
+                                                                    , OpsGenieNotFoundException
+                                                                    , OpsGenieConnectionException
+                                                                   )
 
 
 class OpsGenieClient:
@@ -34,13 +40,26 @@ class OpsGenieClient:
             # OpsGenie erwartet UTC ISO mit Z
             params["since"] = p_since.isoformat() + "Z"
 
-        response = requests.get(
-            f"{self.BASE_URL}/schedules/{p_schedule_id}/timeline",
-            headers=headers,
-            params=params,
-            timeout=30
-        )
+        try:
+            response = requests.get(
+                f"{self.BASE_URL}/schedules/{p_schedule_id}/timeline",
+                headers=headers,
+                params=params,
+                timeout=30
+            )
 
+        except requests.exceptions.ConnectionError as ex:
+            raise OpsGenieConnectionException(str(ex))
+
+        if response.status_code == 401:
+            raise OpsGenieAuthException('Authentication failed')
+
+        if response.status_code == 404:
+            raise OpsGenieNotFoundException('Project not found')
+
+        if response.status_code != 200:
+            raise OpsGenieApiException(f'Unexpected API error: {response.status_code}')
+        
         response.raise_for_status()
 
         return response.json()

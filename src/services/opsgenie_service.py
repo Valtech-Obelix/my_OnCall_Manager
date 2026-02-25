@@ -1,128 +1,111 @@
-import   os
-import   logging
-from     datetime                                          import (  datetime
-                                                                   , timezone
-                                                                  )
-from     typing                                            import List
-
-from     src.domain.shift                                  import Shift
-from     src.infrastructure.shift_repository               import ShiftRepository
-from     src.infrastructure.opsgenie_client                import OpsGenieClient
-
+import  json
+from    src.domain.import_result                            import  ImportResult
+from    src.domain.shift                                    import  Shift
+from    src.domain.exceptions                               import  (  OpsGenieApiException
+                                                                     , OpsGenieAuthException
+                                                                     , OpsGenieConnectionException
+                                                                     , OpsGenieNotFoundException
+                                                                    )
 
 class OpsGenieService:
-    """
-    Ref: UC-004 v0.1
-
-    - Steuert Import von OpsGenie-Schichten
-    - Berücksichtigt letzten Importzeitpunkt
-    - Parst JSON in Domain-Objekte
-    - Persistiert Shifts
-    """
-
-    SOURCE_PREFIX = "opsgenie"
 
     def __init__(
         self,
-        p_shift_repository: ShiftRepository,
+        p_client,
+        p_shift_repository,
+        p_analyst_repository,
+        p_logger
     ):
-        self._repository = p_shift_repository
+        self._client = p_client
+        self._shift_repository = p_shift_repository
+        self._analyst_repository = p_analyst_repository
+        self._logger = p_logger
 
-        api_key = os.getenv("OPSGENIE_API_KEY")
-        self._client = OpsGenieClient(api_key)
+    def import_schedule(
+        self,
+        p_schedule_id: str,
+        p_project: str
+    ) -> ImportResult:
 
-        self._logger = logging.getLogger(__name__)
-
-    # --------------------------------------------------
-    # Öffentliche API
-    # --------------------------------------------------
-
-    def import_schedule(self, p_schedule_id: str) -> int:
-
-        source_key = f"{self.SOURCE_PREFIX}:{p_schedule_id}"
-
-        last_import = self._repository.get_last_import(source_key)
-
-        self._logger.info("Starting OpsGenie import for %s", p_schedule_id)
-
-        response_json = self._client.get_schedule_timeline(
-            p_schedule_id=p_schedule_id,
-            p_since=last_import
-        )
-
-        shifts = self._parse_shifts(
-            p_schedule_id=p_schedule_id,
-            p_json=response_json
-        )
-
-        if not shifts:
-            self._logger.info("No new shifts found.")
-            return 0
-
-        self._repository.add_many(shifts)
-
-        now_utc = datetime.now(timezone.utc)
-        self._repository.set_last_import(source_key, now_utc)
-
-        self._logger.info("Imported %d shifts.", len(shifts))
-
-        return len(shifts)
-
-    # --------------------------------------------------
-    # JSON Parsing
-    # --------------------------------------------------
-
-    def _parse_shifts(self, p_schedule_id: str, p_json: dict) -> List[Shift]:
-
-        shifts: List[Shift] = []
+        imported = 0
+        skipped = 0
+        errors = 0
 
         try:
-            rotations = (
-                p_json["data"]
-                ["finalTimeline"]
-                ["rotations"]
-            )
-        except KeyError:
-            self._logger.error("Unexpected OpsGenie response structure.")
-            return shifts
+            timeline = self._client.get_schedule_timeline(p_schedule_id)
+
+            self._logger.debug('=== RAW OPSGENIE RESPONSE START ===')
+            self._logger.debug(json.dumps(timeline, indent=2))
+            self._logger.debug('=== RAW OPSGENIE RESPONSE END ===')
+
+        except (
+            OpsGenieAuthException,
+            OpsGenieNotFoundException,
+            OpsGenieConnectionException,
+            OpsGenieApiException
+        ) as ex:
+            self._logger.error(f'OpsGenie API error: {ex}')
+            raise
+
+        rotations = (
+            timeline.get('data', {})
+                    .get('finalTimeline', {})
+                    .get('rotations', [])
+        )
 
         for rotation in rotations:
+            periods = rotation.get('periods', [])
 
-            entries = rotation.get("entries", [])
+            for period in periods:
 
-            for entry in entries:
+                try:
+                    recipient = period.get('recipient')
 
-                recipient = entry.get("recipient", {})
-                analyst_name = recipient.get("name")
+                    if not recipient:
+                        skipped += 1
+                        continue
 
-                start = entry.get("startDate")
-                end = entry.get("endDate")
+                    if recipient.get('type') != 'user':
+                        skipped += 1
+                        continue
 
-                if not analyst_name or not start or not end:
-                    continue
+                    email = recipient.get('name')
 
-                start_dt = self._parse_utc(start)
-                end_dt = self._parse_utc(end)
+                    if not email:
+                        skipped += 1
+                        continue
 
-                shift = Shift(
-                    p_id=None,
-                    p_project="unknown",  # später erweiterbar
-                    p_schedule_id=p_schedule_id,
-                    p_analyst_name=analyst_name,
-                    p_start=start_dt,
-                    p_end=end_dt
-                )
+                    analyst = self._analyst_repository.find_by_email(email)
 
-                shifts.append(shift)
+                    if not analyst:
+                        self._logger.warning(
+                            f'No analyst found for email: {email}'
+                        )
+                        skipped += 1
+                        continue
 
-        return shifts
+                    shift = Shift(
+                        p_id=None,
+                        p_analyst_id=analyst.id,
+                        p_project=p_project,
+                        p_schedule_id=p_schedule_id,
+                        p_start_time=period.get('startDate'),
+                        p_end_time=period.get('endDate')
+                    )
 
-    # --------------------------------------------------
-    # Hilfsfunktionen
-    # --------------------------------------------------
+                    saved = self._shift_repository.save(shift)
 
-    def _parse_utc(self, p_value: str) -> datetime:
-        # Erwartet Format: 2026-02-01T00:00:00Z
-        return datetime.fromisoformat(
-            p_value.replace("Z", "+00:00")
+                    if saved:
+                        imported += 1
+                    else:
+                        skipped += 1
+
+                except Exception as ex:
+                    self._logger.error(f'Shift processing failed: {ex}')
+                    errors += 1
+
+        return ImportResult(
+            p_imported=imported,
+            p_skipped=skipped,
+            p_errors=errors
         )

@@ -45,12 +45,13 @@ class Database:
             '''
             CREATE TABLE IF NOT EXISTS shifts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                analyst_id INTEGER NOT NULL,
                 project TEXT NOT NULL,
                 schedule_id TEXT NOT NULL,
-                analyst_name TEXT NOT NULL,
                 start_time TEXT NOT NULL,
                 end_time TEXT NOT NULL,
-                UNIQUE(schedule_id, analyst_name, start)
+                FOREIGN KEY (analyst_id) REFERENCES incident_analyst(id),
+                UNIQUE (analyst_id, schedule_id, start_time, end_time)
             )
             '''
         )

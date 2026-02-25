@@ -22,6 +22,7 @@ class IncidentAnalyst:
         p_id                                          : int | None,
         p_vornamen                                    : str,
         p_nachname                                    : str,
+        p_buchungsname                                : str,
         p_email                                       : str,
         p_start_datum                                 : date,
         p_ende_datum                                  : date | None = None
@@ -30,16 +31,12 @@ class IncidentAnalyst:
         self.id                                       = p_id
         self.vornamen                                 = p_vornamen.strip()
         self.nachname                                 = p_nachname.strip()
+        self.buchungsname                             = p_buchungsname.strip()
         self.email                                    = p_email.strip()
         self.start_datum                              = p_start_datum
         self.ende_datum                               = p_ende_datum
 
         self._validate()
-
-    # Ref: UC-001 v0.2 – Buchungsname abgeleitet
-    @property
-    def buchungsname(self) -> str:
-        return f'{self.nachname}, {self.vornamen}'
 
     @property
     def is_active(self) -> bool:

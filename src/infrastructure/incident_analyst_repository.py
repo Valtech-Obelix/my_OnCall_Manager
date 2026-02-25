@@ -115,3 +115,37 @@ class IncidentAnalystRepository:
 
         self._connection.commit()
         
+    # UC-004
+    def find_by_email(self, p_email: str) -> IncidentAnalyst | None:
+
+        cursor = self._connection.cursor()
+
+        cursor.execute(
+            '''
+            SELECT id,
+                vornamen,
+                nachname,
+                buchungsname,
+                email,
+                start_datum,
+                ende_datum
+            FROM incident_analyst
+            WHERE lower(email) = lower(?)
+            ''',
+            (p_email,)
+        )
+
+        row = cursor.fetchone()
+
+        if row is None:
+            return None
+
+        return IncidentAnalyst(
+            p_id=row[0],
+            p_vornamen=row[1],
+            p_nachname=row[2],
+            p_buchungsname=row[3],
+            p_email=row[4],
+            p_start_datum=row[5],
+            p_ende_datum=row[6]
+        )
