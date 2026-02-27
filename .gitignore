@@ -226,3 +226,6 @@ docs/_build/
 # sicherstellen, dass use_cases erlaubt sind
 !docs/use_cases/
 !docs/use_cases/*.md
+
+# lokale SQL-Skripte
+src/sql/*.sql
