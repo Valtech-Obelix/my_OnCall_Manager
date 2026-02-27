@@ -1,18 +1,37 @@
 # UC-005 – Auswahl Schichtplan
 
 ## Version
-0.1
+0.2
 
 ---
 
 ## Ziel
 
 Als Administrator  
-möchte ich die Kennung nur einmal beim ersten Abruf der Schichten eingeben. Bei jeden nachfolgendem Abruf 
-möchte ich den Schichtplan aus der listen der bisher abgerufenen Schichtpläne auswählen können. 
+möchte ich die Kennung nur einmal beim ersten Abruf der Schichten eingeben. Bei jedem nachfolgendem Abruf
+möchte ich den Schichtplan aus der Liste der bisher abgerufenen Schichtpläne auswählen können,
 um ausschließlich fachlich relevante On-Call-Zeiträume der Incident-Analysten auszuwerten.
 
 ---
+
+## Hauptablauf
+
+1. Administrator öffnet den Import-Dialog.
+2. System lädt die Historie der bereits importierten Schichtpläne.
+3. Administrator wählt einen vorhandenen Schichtplan über den Namen des Schichtplans aus
+   oder erfasst einen neuen Namen.
+4. System setzt bei Auswahl automatisch die zugehörige `Schedule ID`.
+5. Administrator startet den Import über „Schichten importieren“ oder beendet den Dialog über „Fertig“.
+
+---
+
+## Akzeptanzkriterien
+
+- Feldbezeichnung lautet „Name des Schichtplans“.
+- Auswahl erfolgt primär über den Namen des Schichtplans.
+- Zu ausgewähltem Namen wird die passende `Schedule ID` vorbelegt.
+- Letzter verwendeter Schichtplan ist beim Öffnen vorausgewählt.
+- Buttontexte lauten „Schichten importieren“ und „Fertig“.
 
 ## Zugehörige Change Requests
 

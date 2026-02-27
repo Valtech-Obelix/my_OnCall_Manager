@@ -59,3 +59,42 @@ def test_import_history_roundtrip() -> None:
     assert history[0]["schedule_id"] == "schedule-123"
     assert history[0]["schedule_name"] == "Schichtplan A"
     assert history[0]["last_import"]
+
+
+def test_has_import_history_for_schedule() -> None:
+    repository = _create_repository()
+    repository.save_import_history(
+        p_schedule_id="schedule-xyz",
+        p_schedule_name="Schichtplan B"
+    )
+
+    assert repository.has_import_history_for_schedule("schedule-xyz") is True
+    assert repository.has_import_history_for_schedule("schedule-none") is False
+
+
+def test_get_schedule_time_bounds_for_schedule() -> None:
+    repository = _create_repository()
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=1,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time="2025-12-31T23:00:00Z",
+            p_end_time="2026-01-01T08:00:00Z",
+        )
+    )
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=1,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time="2026-01-02T00:00:00Z",
+            p_end_time="2026-01-02T08:00:00Z",
+        )
+    )
+
+    min_start, max_end = repository.get_schedule_time_bounds("schedule-42")
+    assert min_start == "2025-12-31T23:00:00Z"
+    assert max_end == "2026-01-02T08:00:00Z"

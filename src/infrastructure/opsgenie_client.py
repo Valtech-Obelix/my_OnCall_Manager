@@ -26,7 +26,11 @@ class OpsGenieClient:
     def get_schedule_timeline(
         self,
         p_schedule_id: str,
-        p_since: datetime | None = None
+        p_since: datetime | None = None,
+        p_until: datetime | None = None,
+        p_date: datetime | None = None,
+        p_interval: int | None = None,
+        p_interval_unit: str | None = None
     ) -> dict[str, Any]:
 
         headers = {
@@ -39,6 +43,19 @@ class OpsGenieClient:
         if p_since:
             # OpsGenie erwartet UTC ISO mit Z
             params["since"] = p_since.isoformat() + "Z"
+
+        if p_until:
+            # OpsGenie erwartet UTC ISO mit Z
+            params["until"] = p_until.isoformat() + "Z"
+
+        if p_date:
+            params["date"] = p_date.isoformat() + "Z"
+
+        if p_interval:
+            params["interval"] = p_interval
+
+        if p_interval_unit:
+            params["intervalUnit"] = p_interval_unit
 
         try:
             response = requests.get(

@@ -1,7 +1,7 @@
 # UC-004 – OpsGenie Schichten importieren
 
 ## Version
-0.2
+0.3
 
 ---
 
@@ -13,12 +13,12 @@ um ausschließlich fachlich relevante On-Call-Zeiträume der Incident-Analysten 
 
 ---
 
-## Motivation für Version 0.2
+## Motivation für Version 0.3
 
-OpsGenie erzeugt bei Overrides technische Split-Perioden mit Sekunden- oder Millisekundenanteilen (z. B. `23:32:36.679Z`).  
-Diese Splits sind fachlich nicht relevant für die Auswertung der Schichtverteilung.
-
-Version 0.2 führt daher eine fachliche Filterregel ein, um nur „echte“ Schichtgrenzen zu importieren.
+Version 0.3 ergänzt die Importfunktion um:
+- Verwendung von `Schedule ID` plus `Name des Schichtplans` im UI.
+- Persistente Historie bereits importierter Schichtpläne.
+- Anzeige des importierten Zeitraums in lokaler Zeit `Europe/Berlin` (inkl. Sommer-/Winterzeit).
 
 ---
 
@@ -41,6 +41,7 @@ Administrator
 
 - API-Zugang zu OpsGenie ist konfiguriert.
 - Schedule-ID ist bekannt.
+- Name des Schichtplans ist bekannt.
 - Incident-Analysten existieren im System.
 - Email-Adressen stimmen mit OpsGenie-Usern überein.
 - Email-Matching erfolgt case-insensitive.
@@ -56,37 +57,24 @@ Auswahl „OpsGenie Schichten importieren“ im Hauptmenü.
 ## Hauptablauf
 
 1. Administrator öffnet den Import-Dialog.
-2. Administrator gibt Schedule-ID und Projekt an.
+2. Administrator wählt einen vorhandenen Schichtplan oder erfasst `Schedule ID` und `Name des Schichtplans`.
 3. Administrator startet den Import.
 4. System ruft über die OpsGenie-API die Timeline des Schedules ab.
 5. System iteriert über alle Rotations und Perioden.
-6. System filtert Perioden gemäß fachlicher Regel (siehe unten).
-7. System ordnet jede gültige Periode über Email einem Incident-Analysten zu.
-8. System speichert die Schicht, sofern sie noch nicht existiert.
-9. System zeigt das Import-Ergebnis (imported / skipped / errors) an.
+6. System ordnet jede Periode über Email einem Incident-Analysten zu.
+7. System speichert die Schicht, sofern sie noch nicht existiert.
+8. System aktualisiert die Import-Historie.
+9. System zeigt das Import-Ergebnis (`imported / skipped / errors`) an.
+10. System zeigt den importierten Zeitraum in lokaler Zeit `Europe/Berlin` an.
 
 ---
 
-## Fachliche Filterregel (neu in Version 0.2)
+## Fachliche Importregeln
 
-Eine Periode wird nur importiert, wenn:
-
-- `recipient.type == "user"`
-- `startDate` Sekunden == 00
-- `endDate` Sekunden == 00
-- keine Millisekunden vorhanden
-
-Das bedeutet konkret:
-
-Zulässig:
-- `2026-02-25T16:00:00Z`
-- `2026-02-26T00:00:00Z`
-
-Nicht zulässig:
-- `2026-02-25T23:32:36.679Z`
-- `2026-02-25T23:33:24.754Z`
-
-Perioden mit Sekunden- oder Millisekundenanteil gelten als technisch erzeugte Override-Splits und werden verworfen.
+- Es werden nur Perioden mit `recipient.type == "user"` importiert.
+- Die Zuordnung zum Incident-Analysten erfolgt über Email (case-insensitive).
+- Nicht zuordenbare Emails werden als `skipped` gewertet und als Warnung geloggt.
+- Duplikate werden über DB-Constraint verhindert und als `skipped` gezählt.
 
 ---
 
@@ -104,20 +92,16 @@ Perioden mit Sekunden- oder Millisekundenanteil gelten als technisch erzeugte Ov
 - Warnung loggen
 - Periode wird übersprungen
 
-### A4 – Technischer Override-Split erkannt
-- Periode wird nicht importiert
-- Debug-Log-Eintrag
-
 ---
 
 ## Akzeptanzkriterien
 
-- Nur fachlich relevante Schichten werden gespeichert.
-- Override-Splits mit Sekunden oder Millisekunden werden ignoriert.
+- Schichten werden mit `Schedule ID` und `Name des Schichtplans` importiert.
 - Mehrfachimport erzeugt keine Duplikate.
 - Email-Zuordnung erfolgt case-insensitive.
 - Fehler werden geloggt.
 - RAW-JSON wird ausschließlich im DEBUG-Level geloggt.
+- Der importierte Zeitraum wird nach dem Import in `Europe/Berlin` angezeigt (DST-sicher).
 
 ---
 
@@ -136,8 +120,13 @@ Tabelle: `shifts`
 ---
 
 ## Änderungsverlauf
+## Version 0.3
+- Feld „Projekt“ ersetzt durch „Name des Schichtplans“.
+- Importhistorie und Schichtplan-Auswahl integriert (siehe UC-005).
+- Zeitraumanzeige in lokaler Zeit `Europe/Berlin` ergänzt.
+
 ## Version 0.2
-Schichten die aus irgendeinem Grund einen Splitt erfahren haben zusammenfassen, so dass
+Schichten, die aus irgendeinem Grund einen Split erfahren haben, zusammenfassen, sodass
 es pro Schicht nur einen Eintrag gibt.
 
 ## Version 0.1

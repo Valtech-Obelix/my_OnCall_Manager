@@ -89,6 +89,38 @@ class ShiftRepository:
             )
         return entries
 
+    def has_import_history_for_schedule(self, p_schedule_id: str) -> bool:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT 1
+            FROM import_history
+            WHERE source = ?
+               OR source LIKE ?
+            LIMIT 1
+            ''',
+            (p_schedule_id, f"{p_schedule_id}|%")
+        )
+        return cursor.fetchone() is not None
+
+    def get_schedule_time_bounds(
+        self,
+        p_schedule_id: str
+    ) -> tuple[str | None, str | None]:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT MIN(start_time), MAX(end_time)
+            FROM shifts
+            WHERE schedule_id = ?
+            ''',
+            (p_schedule_id,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None, None
+        return row[0], row[1]
+
     def _to_history_source(
         self,
         p_schedule_id: str,

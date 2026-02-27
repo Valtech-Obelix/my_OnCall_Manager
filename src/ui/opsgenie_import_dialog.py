@@ -123,6 +123,16 @@ class OpsGenieImportDialog(QDialog):
                 p_schedule_id=schedule_id,
                 p_schedule_name=schedule_name
             )
+            local_start, local_end = self._service.get_schedule_time_bounds_local(
+                schedule_id
+            )
+
+            time_range_text = ""
+            if local_start and local_end:
+                time_range_text = (
+                    "\n\nZeitraum (Europe/Berlin, inkl. Sommer-/Winterzeit):\n"
+                    f"{local_start} bis {local_end}"
+                )
 
             QMessageBox.information(
                 self,
@@ -130,6 +140,7 @@ class OpsGenieImportDialog(QDialog):
                 f'Imported: {result.imported}\n'
                 f'Skipped: {result.skipped}\n'
                 f'Errors: {result.errors}'
+                f'{time_range_text}'
             )
             self._load_history()
             self._schedule_name_combo.setEditText(schedule_name)
