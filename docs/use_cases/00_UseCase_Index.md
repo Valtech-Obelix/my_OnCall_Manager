@@ -8,3 +8,6 @@
 | UC-004 | OpsGenie Schichten importieren       | geplant       | 0.2     |
 | UC-005 |                                      | geplant       | 0.1     |
 
+## Verknüpfte Änderungshistorie
+
+- [Change Request Übersicht](../change_requests/00_CR_Index.md)

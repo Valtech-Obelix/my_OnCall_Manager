@@ -24,7 +24,7 @@ class OpsGenieService:
     def import_schedule(
         self,
         p_schedule_id: str,
-        p_project: str
+        p_schedule_name: str
     ) -> ImportResult:
 
         imported = 0
@@ -87,7 +87,7 @@ class OpsGenieService:
                     shift = Shift(
                         p_id=None,
                         p_analyst_id=analyst.id,
-                        p_project=p_project,
+                        p_project=p_schedule_name,
                         p_schedule_id=p_schedule_id,
                         p_start_time=period.get('startDate'),
                         p_end_time=period.get('endDate')
@@ -104,8 +104,16 @@ class OpsGenieService:
                     self._logger.error(f'Shift processing failed: {ex}')
                     errors += 1
 
+        self._shift_repository.save_import_history(
+            p_schedule_id=p_schedule_id,
+            p_schedule_name=p_schedule_name
+        )
+
         return ImportResult(
             p_imported=imported,
             p_skipped=skipped,
             p_errors=errors
         )
+
+    def get_import_history(self) -> list[dict[str, str]]:
+        return self._shift_repository.get_import_history()
