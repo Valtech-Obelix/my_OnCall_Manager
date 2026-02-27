@@ -22,16 +22,19 @@ class IncidentAnalyst:
         p_id                                          : int | None,
         p_vornamen                                    : str,
         p_nachname                                    : str,
-        p_buchungsname                                : str,
         p_email                                       : str,
         p_start_datum                                 : date,
-        p_ende_datum                                  : date | None = None
+        p_ende_datum                                  : date | None = None,
+        p_buchungsname                                : str | None = None
     ):
         # Ref: UC-001 v0.2 – neue Attribute
         self.id                                       = p_id
         self.vornamen                                 = p_vornamen.strip()
         self.nachname                                 = p_nachname.strip()
-        self.buchungsname                             = p_buchungsname.strip()
+        if p_buchungsname:
+            self.buchungsname = p_buchungsname.strip()
+        else:
+            self.buchungsname = f"{self.vornamen} {self.nachname}".strip()
         self.email                                    = p_email.strip()
         self.start_datum                              = p_start_datum
         self.ende_datum                               = p_ende_datum
@@ -50,6 +53,9 @@ class IncidentAnalyst:
 
         if not self.nachname:
             raise DomainException('Nachname darf nicht leer sein.')
+
+        if not self.buchungsname:
+            raise DomainException('Buchungsname darf nicht leer sein.')
 
         if not self._is_valid_email():
             raise DomainException('Ungültiges Email-Format.')

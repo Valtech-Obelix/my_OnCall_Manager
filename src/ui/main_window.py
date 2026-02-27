@@ -39,6 +39,9 @@ class MainWindow(QMainWindow):
 
         self._import_button = QPushButton(BUTTON_IMPORT_SHIFTS)
         self._import_button.clicked.connect(self._open_import_dialog)
+        if self._application.opsgenie_service is None:
+            self._import_button.setEnabled(False)
+            self._import_button.setToolTip('OPS_GENIE_API_KEY fehlt.')
         layout.addWidget(self._import_button)
 
         layout.addStretch()
@@ -53,6 +56,8 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     def _open_import_dialog(self):
+        if self._application.opsgenie_service is None:
+            return
         dialog = OpsGenieImportDialog   (  p_opsgenie_service=self._application.opsgenie_service
                                          , p_parent=self
                                         )

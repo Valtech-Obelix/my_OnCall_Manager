@@ -11,6 +11,9 @@ def setup_logging():
 
     # Root-Logger holen
     logger = logging.getLogger()
+    if getattr(logger, "_my_oncall_logging_configured", False):
+        return
+
     logger.setLevel(logging.DEBUG)
 
     # Formatter
@@ -34,3 +37,4 @@ def setup_logging():
 
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
+    logger._my_oncall_logging_configured = True

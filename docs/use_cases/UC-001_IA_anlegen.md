@@ -97,7 +97,7 @@ Neue Spalten:
 - end_datum >= start_datum (falls gesetzt)
 
 ## Status
-geplant
+umgesetzt
 
 ## Änderungsverlauf
 

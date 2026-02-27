@@ -17,7 +17,7 @@ class IncidentAnalystService:
                , p_email
                , p_start_datum
                , p_ende_datum=None
-              ):
+              ) -> IncidentAnalyst:
         self._logger.debug(  "Input data: %s %s %s %s %s"
                            , p_vornamen
                            , p_nachname
@@ -39,6 +39,7 @@ class IncidentAnalystService:
                               , p_nachname
                               , p_vornamen
                              )
+            return result
         except Exception as e:
             self._logger.error("Error while creating IncidentAnalyst: %s", str(e), exc_info=True)
             raise

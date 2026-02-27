@@ -1,45 +1,92 @@
 # UC-004 – OpsGenie Schichten importieren
 
+## Version
+0.2
+
+---
+
 ## Ziel
-Als           Administrator  
-möchte        ich aus OpsGenie die Schichten eines bestimmten Projektes einlesen  
-um            die Verteilung der Schichten auf die Incident-Analysten auswerten zu können.
+
+Als Administrator  
+möchte ich aus OpsGenie die Schichten eines bestimmten Schedules importieren  
+um ausschließlich fachlich relevante On-Call-Zeiträume der Incident-Analysten auszuwerten.
+
+---
+
+## Motivation für Version 0.2
+
+OpsGenie erzeugt bei Overrides technische Split-Perioden mit Sekunden- oder Millisekundenanteilen (z. B. `23:32:36.679Z`).  
+Diese Splits sind fachlich nicht relevant für die Auswertung der Schichtverteilung.
+
+Version 0.2 führt daher eine fachliche Filterregel ein, um nur „echte“ Schichtgrenzen zu importieren.
 
 ---
 
 ## Modul-Zuordnung
-- UI.           : opsgenie_import_dialog.py
-- Geschäftslogik: opsgenie_service.py
-- Datenhaltung. : shift_repository.py
-- Integration.  : opsgenie_client.py
+
+- UI: `opsgenie_import_dialog.py`
+- Geschäftslogik: `opsgenie_service.py`
+- Datenhaltung: `shift_repository.py`
+- Integration: `opsgenie_client.py`
 
 ---
 
 ## Akteur
+
 Administrator
 
 ---
 
 ## Vorbedingungen
+
 - API-Zugang zu OpsGenie ist konfiguriert.
-- Projektname oder Projekt-ID ist bekannt.
+- Schedule-ID ist bekannt.
 - Incident-Analysten existieren im System.
+- Email-Adressen stimmen mit OpsGenie-Usern überein.
+- Email-Matching erfolgt case-insensitive.
 
 ---
 
 ## Trigger
-- Auswahl „Schichten importieren“ im Hauptmenü.
+
+Auswahl „OpsGenie Schichten importieren“ im Hauptmenü.
 
 ---
 
 ## Hauptablauf
-01. Administrator öffnet den Import-Dialog.
-02. Administrator wählt ein Projekt.
-03. Administrator startet den Import.
-04. System ruft über die OpsGenie-API die Schichten ab.
-05. System speichert die Schichtdaten lokal.
-06. System ordnet Schichten den Incident-Analysten zu.
-07. System zeigt Import-Ergebnis an.
+
+1. Administrator öffnet den Import-Dialog.
+2. Administrator gibt Schedule-ID und Projekt an.
+3. Administrator startet den Import.
+4. System ruft über die OpsGenie-API die Timeline des Schedules ab.
+5. System iteriert über alle Rotations und Perioden.
+6. System filtert Perioden gemäß fachlicher Regel (siehe unten).
+7. System ordnet jede gültige Periode über Email einem Incident-Analysten zu.
+8. System speichert die Schicht, sofern sie noch nicht existiert.
+9. System zeigt das Import-Ergebnis (imported / skipped / errors) an.
+
+---
+
+## Fachliche Filterregel (neu in Version 0.2)
+
+Eine Periode wird nur importiert, wenn:
+
+- `recipient.type == "user"`
+- `startDate` Sekunden == 00
+- `endDate` Sekunden == 00
+- keine Millisekunden vorhanden
+
+Das bedeutet konkret:
+
+Zulässig:
+- `2026-02-25T16:00:00Z`
+- `2026-02-26T00:00:00Z`
+
+Nicht zulässig:
+- `2026-02-25T23:32:36.679Z`
+- `2026-02-25T23:33:24.754Z`
+
+Perioden mit Sekunden- oder Millisekundenanteil gelten als technisch erzeugte Override-Splits und werden verworfen.
 
 ---
 
@@ -53,46 +100,45 @@ Administrator
 - Fehlermeldung anzeigen
 - Kein Import
 
-### A3 – Projekt nicht gefunden
-- Fehlermeldung anzeigen
+### A3 – Analyst nicht gefunden
+- Warnung loggen
+- Periode wird übersprungen
+
+### A4 – Technischer Override-Split erkannt
+- Periode wird nicht importiert
+- Debug-Log-Eintrag
 
 ---
 
 ## Akzeptanzkriterien
-- Schichten werden korrekt aus OpsGenie gelesen.
-- Schichten werden lokal gespeichert.
-- Schichten sind Incident-Analysten zugeordnet.
+
+- Nur fachlich relevante Schichten werden gespeichert.
+- Override-Splits mit Sekunden oder Millisekunden werden ignoriert.
+- Mehrfachimport erzeugt keine Duplikate.
+- Email-Zuordnung erfolgt case-insensitive.
 - Fehler werden geloggt.
+- RAW-JSON wird ausschließlich im DEBUG-Level geloggt.
 
 ---
 
-## Technische Hinweise
+## Datenmodell
 
-### Neue Komponenten
+Tabelle: `shifts`
 
-- opsgenie_client.py  
-  → kapselt HTTP-API-Aufrufe
-
-- opsgenie_service.py  
-  → Business-Logik für Import
-
-- shift_repository.py  
-  → Speichert Schichtdaten
-
-### Datenmodell (neu)
-
-Tabelle: shifts
-
-- id INTEGER PRIMARY KEY
+- id INTEGER PRIMARY KEY AUTOINCREMENT
 - analyst_id INTEGER (FK)
-- project TEXT
-- start_time DATETIME
-- end_time DATETIME
+- project TEXT NOT NULL
+- schedule_id TEXT NOT NULL
+- start_time TEXT NOT NULL
+- end_time TEXT NOT NULL
+- UNIQUE (analyst_id, schedule_id, start_time, end_time)
 
 ---
 
-## Status
-geplant
+## Änderungsverlauf
+## Version 0.2
+Schichten die aus irgendeinem Grund einen Splitt erfahren haben zusammenfassen, so dass
+es pro Schicht nur einen Eintrag gibt.
 
-## Version
-0.1
+## Version 0.1
+Import aus OpsGenie von allen Schichten mit Recipients mit einer Email im Feld Name

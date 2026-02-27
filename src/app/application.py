@@ -26,14 +26,15 @@ class Application:
         self._logger.info('')
 
         api_key = os.getenv('OPS_GENIE_API_KEY')
-
-        if not api_key:
-            raise RuntimeError(
-                'Environment variable OPS_GENIE_API_KEY is not set.'
+        self._opsgenie_client = None
+        self._opsgenie_service = None
+        if api_key:
+            self._logger.info('OpsGenie API KEY geladen')
+            self._opsgenie_client = OpsGenieClient(p_api_key=api_key)
+        else:
+            self._logger.warning(
+                'OPS_GENIE_API_KEY ist nicht gesetzt. OpsGenie-Import ist deaktiviert.'
             )
-        self._logger.info('OpsGenie API KEY geladen')
-
-        self._opsgenie_client = OpsGenieClient(p_api_key=api_key)       
 
         self._qt_app = QApplication(sys.argv)
 
@@ -45,11 +46,12 @@ class Application:
 
         # Ref: UC-004 – vollständige Verdrahtung
         self._shift_repository = ShiftRepository(self._database.get_connection())
-        self._opsgenie_service = OpsGenieService    (  p_client=self._opsgenie_client
-                                                     , p_shift_repository=self._shift_repository
-                                                     , p_analyst_repository=self._analyst_repository
-                                                     , p_logger=self._logger
-                                                    )
+        if self._opsgenie_client is not None:
+            self._opsgenie_service = OpsGenieService    (  p_client=self._opsgenie_client
+                                                         , p_shift_repository=self._shift_repository
+                                                         , p_analyst_repository=self._analyst_repository
+                                                         , p_logger=self._logger
+                                                        )
 
         self._main_window = MainWindow(self)
 

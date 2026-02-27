@@ -43,6 +43,7 @@ class IncidentAnalystRepository:
         return IncidentAnalyst(p_id          = new_id, 
                                p_vornamen    = p_analyst.vornamen,
                                p_nachname    = p_analyst.nachname, 
+                               p_buchungsname= p_analyst.buchungsname,
                                p_email       = p_analyst.email,
                                p_start_datum = p_analyst.start_datum, 
                                p_ende_datum  = p_analyst.ende_datum
@@ -58,6 +59,7 @@ class IncidentAnalystRepository:
             SELECT id,
                 vornamen,
                 nachname,
+                buchungsname,
                 email,
                 start_datum,
                 ende_datum
@@ -76,9 +78,10 @@ class IncidentAnalystRepository:
                     p_id=row[0],
                     p_vornamen=row[1],
                     p_nachname=row[2],
-                    p_email=row[3],
-                    p_start_datum=date.fromisoformat(row[4]),
-                    p_ende_datum=date.fromisoformat(row[5]) if row[5] else None
+                    p_buchungsname=row[3],
+                    p_email=row[4],
+                    p_start_datum=date.fromisoformat(row[5]),
+                    p_ende_datum=date.fromisoformat(row[6]) if row[6] else None
                 )
             )
 
@@ -146,6 +149,6 @@ class IncidentAnalystRepository:
             p_nachname=row[2],
             p_buchungsname=row[3],
             p_email=row[4],
-            p_start_datum=row[5],
-            p_ende_datum=row[6]
+            p_start_datum=date.fromisoformat(row[5]),
+            p_ende_datum=date.fromisoformat(row[6]) if row[6] else None
         )
