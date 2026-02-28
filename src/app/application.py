@@ -77,6 +77,27 @@ class Application:
             p_ende_datum
         )
 
+    # Ref: UC-007 – Incident Analyst bearbeiten
+    def update_incident_analyst(
+        self,
+        p_id: int,
+        p_vornamen: str,
+        p_nachname: str,
+        p_email: str,
+        p_start_datum: date,
+        p_ende_datum: date | None = None,
+        p_opsgenie_id: str | None = None
+    ) -> IncidentAnalyst:
+        return self._incident_analyst_service.update(
+            p_id=p_id,
+            p_vornamen=p_vornamen,
+            p_nachname=p_nachname,
+            p_email=p_email,
+            p_start_datum=p_start_datum,
+            p_ende_datum=p_ende_datum,
+            p_opsgenie_id=p_opsgenie_id
+        )
+
     def run(self):
         self._main_window.show()
         return self._qt_app.exec()

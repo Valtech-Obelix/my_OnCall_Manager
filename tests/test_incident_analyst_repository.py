@@ -15,6 +15,7 @@ def _create_repository() -> IncidentAnalystRepository:
             nachname TEXT NOT NULL,
             buchungsname TEXT NOT NULL,
             email TEXT NOT NULL UNIQUE,
+            opsgenie_id TEXT,
             start_datum TEXT NOT NULL,
             ende_datum TEXT
         )
@@ -63,3 +64,39 @@ def test_find_by_email_is_case_insensitive_and_parses_dates() -> None:
     assert analyst is not None
     assert analyst.start_datum == date(2024, 6, 1)
     assert analyst.ende_datum == date(2024, 12, 31)
+
+
+def test_update_persists_changed_fields() -> None:
+    repository = _create_repository()
+
+    created = repository.add(
+        IncidentAnalyst(
+            p_id=None,
+            p_vornamen="Tom",
+            p_nachname="Muster",
+            p_email="tom@example.com",
+            p_start_datum=date(2025, 1, 1),
+        )
+    )
+
+    repository.update(
+        IncidentAnalyst(
+            p_id=created.id,
+            p_vornamen="Thomas",
+            p_nachname="Ruf",
+            p_email="thomas.ruf@example.com",
+            p_opsgenie_id="325b3fbf-cbb2-4724-abe1-4fb488655ede",
+            p_start_datum=date(2025, 2, 1),
+            p_ende_datum=date(2025, 12, 31),
+        )
+    )
+
+    updated = repository.find_by_id(created.id)
+
+    assert updated is not None
+    assert updated.vornamen == "Thomas"
+    assert updated.nachname == "Ruf"
+    assert updated.email == "thomas.ruf@example.com"
+    assert updated.opsgenie_id == "325b3fbf-cbb2-4724-abe1-4fb488655ede"
+    assert updated.start_datum == date(2025, 2, 1)
+    assert updated.ende_datum == date(2025, 12, 31)

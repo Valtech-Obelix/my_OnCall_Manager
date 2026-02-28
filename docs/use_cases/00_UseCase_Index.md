@@ -8,6 +8,7 @@
 | UC-004 | OpsGenie Schichten importieren       | abgeschlossen | 0.3     |
 | UC-005 | Auswahl Schichtplan                  | abgeschlossen | 0.2     |
 | UC-006 | Erstimport ab Jahresbeginn           | abgeschlossen | 0.2     |
+| UC-007 | IA bearbeiten                        | abgeschlossen | 0.1     |
 
 ## Verknüpfte Änderungshistorie
 

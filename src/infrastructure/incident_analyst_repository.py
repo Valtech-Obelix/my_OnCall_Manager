@@ -20,14 +20,23 @@ class IncidentAnalystRepository:
         cursor.execute(
             f'''
             INSERT INTO {TABLE_NAME}
-            (vornamen, nachname, buchungsname, email, start_datum, ende_datum)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (
+                vornamen,
+                nachname,
+                buchungsname,
+                email,
+                opsgenie_id,
+                start_datum,
+                ende_datum
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ''',
             (
                 p_analyst.vornamen,
                 p_analyst.nachname,
                 p_analyst.buchungsname,
                 p_analyst.email,
+                p_analyst.opsgenie_id,
                 p_analyst.start_datum.isoformat(),
                 p_analyst.ende_datum.isoformat()
                 if p_analyst.ende_datum
@@ -45,6 +54,7 @@ class IncidentAnalystRepository:
                                p_nachname    = p_analyst.nachname, 
                                p_buchungsname= p_analyst.buchungsname,
                                p_email       = p_analyst.email,
+                               p_opsgenie_id = p_analyst.opsgenie_id,
                                p_start_datum = p_analyst.start_datum, 
                                p_ende_datum  = p_analyst.ende_datum
         )
@@ -61,6 +71,7 @@ class IncidentAnalystRepository:
                 nachname,
                 buchungsname,
                 email,
+                opsgenie_id,
                 start_datum,
                 ende_datum
             FROM {TABLE_NAME}
@@ -80,8 +91,9 @@ class IncidentAnalystRepository:
                     p_nachname=row[2],
                     p_buchungsname=row[3],
                     p_email=row[4],
-                    p_start_datum=date.fromisoformat(row[5]),
-                    p_ende_datum=date.fromisoformat(row[6]) if row[6] else None
+                    p_opsgenie_id=row[5],
+                    p_start_datum=date.fromisoformat(row[6]),
+                    p_ende_datum=date.fromisoformat(row[7]) if row[7] else None
                 )
             )
 
@@ -130,6 +142,7 @@ class IncidentAnalystRepository:
                 nachname,
                 buchungsname,
                 email,
+                opsgenie_id,
                 start_datum,
                 ende_datum
             FROM incident_analyst
@@ -149,6 +162,68 @@ class IncidentAnalystRepository:
             p_nachname=row[2],
             p_buchungsname=row[3],
             p_email=row[4],
-            p_start_datum=date.fromisoformat(row[5]),
-            p_ende_datum=date.fromisoformat(row[6]) if row[6] else None
+            p_opsgenie_id=row[5],
+            p_start_datum=date.fromisoformat(row[6]),
+            p_ende_datum=date.fromisoformat(row[7]) if row[7] else None
         )
+
+    def find_by_id(self, p_id: int) -> IncidentAnalyst | None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            f'''
+            SELECT id,
+                vornamen,
+                nachname,
+                buchungsname,
+                email,
+                opsgenie_id,
+                start_datum,
+                ende_datum
+            FROM {TABLE_NAME}
+            WHERE id = ?
+            ''',
+            (p_id,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return IncidentAnalyst(
+            p_id=row[0],
+            p_vornamen=row[1],
+            p_nachname=row[2],
+            p_buchungsname=row[3],
+            p_email=row[4],
+            p_opsgenie_id=row[5],
+            p_start_datum=date.fromisoformat(row[6]),
+            p_ende_datum=date.fromisoformat(row[7]) if row[7] else None
+        )
+
+    def update(self, p_analyst: IncidentAnalyst) -> IncidentAnalyst:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            f'''
+            UPDATE {TABLE_NAME}
+            SET vornamen = ?,
+                nachname = ?,
+                buchungsname = ?,
+                email = ?,
+                opsgenie_id = ?,
+                start_datum = ?,
+                ende_datum = ?
+            WHERE id = ?
+            ''',
+            (
+                p_analyst.vornamen,
+                p_analyst.nachname,
+                p_analyst.buchungsname,
+                p_analyst.email,
+                p_analyst.opsgenie_id,
+                p_analyst.start_datum.isoformat(),
+                p_analyst.ende_datum.isoformat()
+                if p_analyst.ende_datum
+                else None,
+                p_analyst.id
+            )
+        )
+        self._connection.commit()
+        return p_analyst

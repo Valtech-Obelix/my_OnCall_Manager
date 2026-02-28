@@ -25,7 +25,8 @@ class IncidentAnalyst:
         p_email                                       : str,
         p_start_datum                                 : date,
         p_ende_datum                                  : date | None = None,
-        p_buchungsname                                : str | None = None
+        p_buchungsname                                : str | None = None,
+        p_opsgenie_id                                 : str | None = None
     ):
         # Ref: UC-001 v0.2 – neue Attribute
         self.id                                       = p_id
@@ -36,6 +37,9 @@ class IncidentAnalyst:
         else:
             self.buchungsname = f"{self.vornamen} {self.nachname}".strip()
         self.email                                    = p_email.strip()
+        self.opsgenie_id                              = (
+            p_opsgenie_id.strip() if p_opsgenie_id else None
+        )
         self.start_datum                              = p_start_datum
         self.ende_datum                               = p_ende_datum
 

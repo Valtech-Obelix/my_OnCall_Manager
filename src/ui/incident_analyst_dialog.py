@@ -17,6 +17,7 @@ from     PySide6.QtCore                                    import (  Qt
                                                                   )
 from     PySide6.QtGui                                     import QIcon
 from     src.ui.incident_analyst_add_dialog                import IncidentAnalystAddDialog
+from     src.ui.incident_analyst_edit_dialog               import IncidentAnalystEditDialog
 from     src.domain.exceptions                             import DomainException
 from     datetime                                          import date
 from     typing                                            import Callable
@@ -94,6 +95,16 @@ class IncidentAnalystDialog(QDialog):
             )
         button_layout.addWidget(self._add_button)
 
+        # Ref: UC-007_IA_Bearbeiten
+        self._edit_button = self._create_icon_button(
+              self.style().standardIcon(QStyle.SP_FileDialogDetailedView)
+            , 60
+            , False
+            , 'ausgewählten Incident Analyst bearbeiten'
+            , self._handle_edit
+            )
+        button_layout.addWidget(self._edit_button)
+
         # Ref: UC-002_IA_Löschen
         self._delete_button = self._create_icon_button(
               QIcon(str(ICON_PATH / 'user-minus.svg'))
@@ -144,13 +155,14 @@ class IncidentAnalystDialog(QDialog):
             if not analyst.is_active:
                 item.setForeground(Qt.gray)
 
-            item.setData(Qt.UserRole, analyst.id)
+            item.setData(Qt.UserRole, analyst)
             self._analyst_list.addItem(item)
        
         self._analyst_list.setCurrentRow(-1)
 
     def _update_button_state(self):
         selected = self._analyst_list.currentItem() is not None
+        self._edit_button.setEnabled(selected)
         self._delete_button.setEnabled(selected)
 
         # Ref: UC-003_IA_deaktiveren
@@ -180,11 +192,25 @@ class IncidentAnalystDialog(QDialog):
         if reply != QMessageBox.Yes:
             return
 
-        analyst_id = selected_item.data(Qt.UserRole)
+        analyst = selected_item.data(Qt.UserRole)
+        analyst_id = analyst.id
 
         self._application.delete_incident_analyst(analyst_id)
 
         self._refresh_list()
+
+    def _handle_edit(self):
+
+        selected_item = self._analyst_list.currentItem()
+
+        if not selected_item:
+            return
+
+        analyst = selected_item.data(Qt.UserRole)
+
+        dialog = IncidentAnalystEditDialog(self._application, analyst, self)
+        if dialog.exec():
+            self._refresh_list()
 
     # Ref: UC-003_IA_deaktivieren
     def _handle_deactivate(self):
@@ -204,7 +230,8 @@ class IncidentAnalystDialog(QDialog):
         if not selected_item:
             return
 
-        analyst_id = selected_item.data(Qt.UserRole)
+        analyst = selected_item.data(Qt.UserRole)
+        analyst_id = analyst.id
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Incident Analyst deaktivieren")
