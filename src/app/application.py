@@ -113,4 +113,12 @@ class Application:
     # Ref: C-003: v.01 - Deaktiveren eines Incident Analysten
     def deactivate_incident_analyst(self, p_id: int, p_ende_datum):
         self._incident_analyst_service.deactivate(p_id, p_ende_datum)
+
+    # Ref: UC-008 – Schichtplan anzeigen
+    def get_schedule_references(self) -> list[dict[str, str]]:
+        return self._shift_repository.get_schedule_references()
+
+    # Ref: UC-008 – Schichtplan anzeigen
+    def get_schedule_entries(self, p_schedule_id: str) -> list[dict[str, str | int | None]]:
+        return self._shift_repository.get_schedule_entries(p_schedule_id)
         

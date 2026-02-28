@@ -1,7 +1,7 @@
 # UC-004 – OpsGenie Schichten importieren
 
 ## Version
-0.5
+0.6
 
 ---
 
@@ -13,11 +13,10 @@ um ausschließlich fachlich relevante On-Call-Zeiträume der Incident-Analysten 
 
 ---
 
-## Motivation für Version 0.5
+## Motivation für Version 0.6
 
-Version 0.5 ergänzt die Importfunktion um:
-- Logging übersprungener Schichtplan-Einträge als Warning (Grund) und Debug (JSON-Ausschnitt).
-- Optionale Checkbox für einen vollständigen JSON-Dump des letzten Imports.
+Version 0.6 ergänzt die Importfunktion um:
+- Zuordnung der Schichten über `OpsGenie ID` statt E-Mail.
 
 ---
 
@@ -42,8 +41,7 @@ Administrator
 - Schedule-ID ist bekannt.
 - Name des Schichtplans ist bekannt.
 - Incident-Analysten existieren im System.
-- Email-Adressen stimmen mit OpsGenie-Usern überein.
-- Email-Matching erfolgt case-insensitive.
+- `opsgenie_id` der Incident-Analysten ist gepflegt.
 
 ---
 
@@ -61,7 +59,7 @@ Auswahl „OpsGenie Schichten importieren“ im Hauptmenü.
 4. Administrator startet den Import.
 5. System ruft über die OpsGenie-API die Timeline des Schedules ab.
 6. System iteriert über alle Rotations und Perioden.
-7. System ordnet jede Periode über Email einem Incident-Analysten zu.
+7. System ordnet jede Periode über `recipient.id` (`opsgenie_id`) einem Incident-Analysten zu.
 8. System speichert die Schicht, sofern sie noch nicht existiert.
 9. System aktualisiert die Import-Historie.
 10. Bei aktivierter Checkbox speichert das System den vollständigen JSON-Content als letzten Import.
@@ -73,8 +71,8 @@ Auswahl „OpsGenie Schichten importieren“ im Hauptmenü.
 ## Fachliche Importregeln
 
 - Es werden nur Perioden mit `recipient.type == "user"` importiert.
-- Die Zuordnung zum Incident-Analysten erfolgt über Email (case-insensitive).
-- Nicht zuordenbare Emails werden als `skipped` gewertet und als Warnung geloggt.
+- Die Zuordnung zum Incident-Analysten erfolgt über `opsgenie_id`.
+- Nicht zuordenbare `opsgenie_id` werden als `skipped` gewertet und als Warnung geloggt.
 - Duplikate werden über DB-Constraint verhindert und als `skipped` gezählt.
 
 ---
@@ -99,7 +97,7 @@ Auswahl „OpsGenie Schichten importieren“ im Hauptmenü.
 
 - Schichten werden mit `Schedule ID` und `Name des Schichtplans` importiert.
 - Mehrfachimport erzeugt keine Duplikate.
-- Email-Zuordnung erfolgt case-insensitive.
+- Zuordnung erfolgt über `opsgenie_id`.
 - Fehler werden geloggt.
 - Übersprungene Einträge werden als Warning mit Grund geloggt.
 - Zu jedem übersprungenen Eintrag wird ein Debug-Log mit JSON-Ausschnitt geloggt.
@@ -124,6 +122,9 @@ Tabelle: `shifts`
 ---
 
 ## Änderungsverlauf
+## Version 0.6
+- Zuordnung von Schichten zu Incident-Analysten auf `opsgenie_id` umgestellt.
+
 ## Version 0.5
 - Warning-/Debug-Splitting für übersprungene Einträge ergänzt.
 - Checkbox für optionalen JSON-Dump des letzten Imports ergänzt.

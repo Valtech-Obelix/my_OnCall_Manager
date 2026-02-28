@@ -52,7 +52,7 @@ class _FakeShiftRepository:
 
 
 class _FakeAnalystRepository:
-    def find_by_email(self, p_email: str):
+    def find_by_opsgenie_id(self, p_opsgenie_id: str):
         return None
 
 

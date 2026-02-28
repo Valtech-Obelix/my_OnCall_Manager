@@ -8,11 +8,13 @@ from    PySide6.QtCore                                      import  Qt
 from    datetime                                            import  date
 from    src.ui.incident_analyst_dialog                      import  IncidentAnalystDialog
 from    src.ui.opsgenie_import_dialog                       import  OpsGenieImportDialog
+from    src.ui.shift_plan_view_dialog                       import  ShiftPlanViewDialog
 
 
 APP_TITLE                               =   'my_OnCall_Manager'
 BUTTON_MANAGE_ANALYSTS                  =   'Incident Analysten verwalten'
 BUTTON_IMPORT_SHIFTS                    =   'OpsGenie Schichten importieren'
+BUTTON_VIEW_SHIFT_PLAN                  =   'Schichtplan anzeigen'
 
 
 class MainWindow(QMainWindow):
@@ -44,6 +46,10 @@ class MainWindow(QMainWindow):
             self._import_button.setToolTip('OPS_GENIE_API_KEY fehlt.')
         layout.addWidget(self._import_button)
 
+        self._view_shift_plan_button = QPushButton(BUTTON_VIEW_SHIFT_PLAN)
+        self._view_shift_plan_button.clicked.connect(self._open_shift_plan_view_dialog)
+        layout.addWidget(self._view_shift_plan_button)
+
         layout.addStretch()
 
         central_widget.setLayout(layout)
@@ -61,5 +67,9 @@ class MainWindow(QMainWindow):
         dialog = OpsGenieImportDialog   (  p_opsgenie_service=self._application.opsgenie_service
                                          , p_parent=self
                                         )
+        dialog.exec()
+
+    def _open_shift_plan_view_dialog(self):
+        dialog = ShiftPlanViewDialog(self._application, self)
         dialog.exec()
         

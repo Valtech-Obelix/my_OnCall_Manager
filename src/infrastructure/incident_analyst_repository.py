@@ -167,6 +167,41 @@ class IncidentAnalystRepository:
             p_ende_datum=date.fromisoformat(row[7]) if row[7] else None
         )
 
+    # UC-004 / CR-008
+    def find_by_opsgenie_id(self, p_opsgenie_id: str) -> IncidentAnalyst | None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT id,
+                vornamen,
+                nachname,
+                buchungsname,
+                email,
+                opsgenie_id,
+                start_datum,
+                ende_datum
+            FROM incident_analyst
+            WHERE lower(opsgenie_id) = lower(?)
+            ''',
+            (p_opsgenie_id,)
+        )
+
+        row = cursor.fetchone()
+
+        if row is None:
+            return None
+
+        return IncidentAnalyst(
+            p_id=row[0],
+            p_vornamen=row[1],
+            p_nachname=row[2],
+            p_buchungsname=row[3],
+            p_email=row[4],
+            p_opsgenie_id=row[5],
+            p_start_datum=date.fromisoformat(row[6]),
+            p_ende_datum=date.fromisoformat(row[7]) if row[7] else None
+        )
+
     def find_by_id(self, p_id: int) -> IncidentAnalyst | None:
         cursor = self._connection.cursor()
         cursor.execute(

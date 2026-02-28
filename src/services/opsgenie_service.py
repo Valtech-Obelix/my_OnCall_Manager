@@ -100,22 +100,24 @@ class OpsGenieService:
                         skipped += 1
                         continue
 
-                    email = recipient.get('name')
+                    recipient_id = recipient.get('id')
 
-                    if not email:
+                    if not recipient_id:
                         self._log_skipped_period(
-                            p_reason='missing recipient email',
+                            p_reason='missing recipient opsgenie_id',
                             p_rotation=rotation,
                             p_period=period
                         )
                         skipped += 1
                         continue
 
-                    analyst = self._analyst_repository.find_by_email(email)
+                    analyst = self._analyst_repository.find_by_opsgenie_id(
+                        recipient_id
+                    )
 
                     if not analyst:
                         self._log_skipped_period(
-                            p_reason=f'no analyst found for email: {email}',
+                            p_reason=f'no analyst found for opsgenie_id: {recipient_id}',
                             p_rotation=rotation,
                             p_period=period
                         )

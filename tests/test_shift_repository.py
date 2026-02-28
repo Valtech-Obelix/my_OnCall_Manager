@@ -21,6 +21,20 @@ def _create_repository() -> ShiftRepository:
     )
     connection.execute(
         """
+        CREATE TABLE incident_analyst (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vornamen TEXT NOT NULL,
+            nachname TEXT NOT NULL,
+            buchungsname TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            opsgenie_id TEXT,
+            start_datum TEXT NOT NULL,
+            ende_datum TEXT
+        )
+        """
+    )
+    connection.execute(
+        """
         CREATE TABLE import_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             source TEXT NOT NULL UNIQUE,
@@ -125,3 +139,32 @@ def test_get_schedule_time_bounds_for_schedule() -> None:
     min_start, max_end = repository.get_schedule_time_bounds("schedule-42")
     assert min_start == "2025-12-31T23:00:00Z"
     assert max_end == "2026-01-02T08:00:00Z"
+
+
+def test_get_schedule_entries_returns_buchungsname_and_email() -> None:
+    repository = _create_repository()
+    repository._connection.execute(
+        """
+        INSERT INTO incident_analyst (
+            id, vornamen, nachname, buchungsname, email, opsgenie_id, start_datum, ende_datum
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (1, "Thomas", "Ruf", "Thomas Ruf", "thomas.ruf@example.com", None, "2025-01-01", None)
+    )
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=1,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time="2026-01-02T00:00:00Z",
+            p_end_time="2026-01-02T08:00:00Z",
+        )
+    )
+
+    entries = repository.get_schedule_entries("schedule-42")
+
+    assert len(entries) == 1
+    assert entries[0]["buchungsname"] == "Thomas Ruf"
+    assert entries[0]["email"] == "thomas.ruf@example.com"

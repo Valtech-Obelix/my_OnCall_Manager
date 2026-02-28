@@ -165,6 +165,41 @@ class ShiftRepository:
             return None, None
         return row[0], row[1]
 
+    def get_schedule_entries(self, p_schedule_id: str) -> list[dict[str, str | int | None]]:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT
+                s.id,
+                s.schedule_id,
+                s.project,
+                s.start_time,
+                s.end_time,
+                ia.buchungsname,
+                ia.email
+            FROM shifts s
+            LEFT JOIN incident_analyst ia ON ia.id = s.analyst_id
+            WHERE s.schedule_id = ?
+            ORDER BY s.start_time ASC
+            ''',
+            (p_schedule_id,)
+        )
+
+        entries: list[dict[str, str | int | None]] = []
+        for row in cursor.fetchall():
+            entries.append(
+                {
+                    "id": row[0],
+                    "schedule_id": row[1],
+                    "project": row[2],
+                    "start_time": row[3],
+                    "end_time": row[4],
+                    "buchungsname": row[5],
+                    "email": row[6],
+                }
+            )
+        return entries
+
     def _to_history_source(
         self,
         p_schedule_id: str,

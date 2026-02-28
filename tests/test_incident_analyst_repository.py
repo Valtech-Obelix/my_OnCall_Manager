@@ -66,6 +66,28 @@ def test_find_by_email_is_case_insensitive_and_parses_dates() -> None:
     assert analyst.ende_datum == date(2024, 12, 31)
 
 
+def test_find_by_opsgenie_id_is_case_insensitive() -> None:
+    repository = _create_repository()
+
+    repository.add(
+        IncidentAnalyst(
+            p_id=None,
+            p_vornamen="Thomas",
+            p_nachname="Ruf",
+            p_email="thomas.ruf@example.com",
+            p_opsgenie_id="325B3FBF-CBB2-4724-ABE1-4FB488655EDE",
+            p_start_datum=date(2025, 1, 1),
+        )
+    )
+
+    analyst = repository.find_by_opsgenie_id(
+        "325b3fbf-cbb2-4724-abe1-4fb488655ede"
+    )
+
+    assert analyst is not None
+    assert analyst.email == "thomas.ruf@example.com"
+
+
 def test_update_persists_changed_fields() -> None:
     repository = _create_repository()
 
