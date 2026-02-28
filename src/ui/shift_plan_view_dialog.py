@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
@@ -36,6 +36,8 @@ class ShiftPlanViewDialog(QDialog):
         super().__init__(p_parent)
         self._application = p_application
         self._entries: list[dict[str, str | int | None]] = []
+        self._suspend_parameter_tracking = False
+        self._has_rendered_once = False
         self._setup_ui()
         self._load_schedule_references()
 
@@ -55,28 +57,42 @@ class ShiftPlanViewDialog(QDialog):
 
         self._view_mode_combo = QComboBox()
         self._view_mode_combo.addItems(["Schichtbezogen", "Tagesbezogen"])
+        # Ref: CR-010 – Tagesbezogene Ansicht als Default
+        self._view_mode_combo.setCurrentText("Tagesbezogen")
+        self._view_mode_combo.currentIndexChanged.connect(self._on_parameter_changed)
         form.addRow("Ansicht:", self._view_mode_combo)
 
         self._full_range_checkbox = QCheckBox("Gesamten verfügbaren Zeitraum anzeigen")
-        self._full_range_checkbox.setChecked(True)
+        # Ref: CR-011 – Default-Zeitraum ist nicht mehr Vollbereich.
+        self._full_range_checkbox.setChecked(False)
         self._full_range_checkbox.toggled.connect(self._on_full_range_toggled)
-        form.addRow("", self._full_range_checkbox)
-
         self._from_date = QDateEdit()
         self._from_date.setCalendarPopup(True)
-        self._from_date.setEnabled(False)
-        form.addRow("Von:", self._from_date)
+        self._from_date.setEnabled(True)
+        self._from_date.dateChanged.connect(self._on_parameter_changed)
 
         self._to_date = QDateEdit()
         self._to_date.setCalendarPopup(True)
-        self._to_date.setEnabled(False)
-        form.addRow("Bis:", self._to_date)
+        self._to_date.setEnabled(True)
+        self._to_date.dateChanged.connect(self._on_parameter_changed)
+
+        # Ref: CR-012 – Bis-Datum neben Von-Datum; Checkbox dahinter.
+        date_row = QHBoxLayout()
+        date_row.addWidget(QLabel("Von:"))
+        date_row.addWidget(self._from_date)
+        date_row.addWidget(QLabel("Bis:"))
+        date_row.addWidget(self._to_date)
+        date_row.addWidget(self._full_range_checkbox)
+        date_row.addStretch()
+        form.addRow("Zeitraum:", date_row)
 
         layout.addLayout(form)
 
         button_row = QHBoxLayout()
-        self._load_button = QPushButton("Anzeigen")
-        self._load_button.clicked.connect(self._render_table)
+        # Ref: CR-013 – Buttontext + Aktivierung nur bei geänderten Parametern.
+        self._load_button = QPushButton("Anzeige aktualisieren")
+        self._load_button.setEnabled(False)
+        self._load_button.clicked.connect(self._on_refresh_clicked)
         button_row.addWidget(self._load_button)
         button_row.addStretch()
         layout.addLayout(button_row)
@@ -106,11 +122,11 @@ class ShiftPlanViewDialog(QDialog):
             return
 
         self._schedule_combo.setCurrentIndex(0)
-        self._on_schedule_changed(0)
 
     def _on_full_range_toggled(self, p_checked: bool):
         self._from_date.setEnabled(not p_checked)
         self._to_date.setEnabled(not p_checked)
+        self._on_parameter_changed()
 
     def _on_schedule_changed(self, p_index: int):
         if p_index < 0:
@@ -120,23 +136,26 @@ class ShiftPlanViewDialog(QDialog):
         if not ref:
             return
 
+        self._suspend_parameter_tracking = True
         schedule_id = ref.get("schedule_id", "")
         self._entries = self._application.get_schedule_entries(schedule_id)
         self._set_date_defaults()
-        self._render_table()
+        self._suspend_parameter_tracking = False
+
+        if not self._has_rendered_once:
+            self._render_table()
+            self._has_rendered_once = True
+            self._set_refresh_pending(False)
+            return
+        self._set_refresh_pending(True)
 
     def _set_date_defaults(self):
-        if not self._entries:
-            current = QDate.currentDate()
-            self._from_date.setDate(current)
-            self._to_date.setDate(current)
-            return
-
-        local_dates = [self._entry_local_date(e) for e in self._entries]
-        min_date = min(local_dates)
-        max_date = max(local_dates)
-        self._from_date.setDate(QDate(min_date.year, min_date.month, min_date.day))
-        self._to_date.setDate(QDate(max_date.year, max_date.month, max_date.day))
+        # Ref: CR-011 – Default: laufende 2-Wochen-Montagsblöcke bis Vortag.
+        today_local = datetime.now(BERLIN).date()
+        default_start = today_local - timedelta(days=today_local.weekday() + 14)
+        default_end = today_local - timedelta(days=1)
+        self._from_date.setDate(QDate(default_start.year, default_start.month, default_start.day))
+        self._to_date.setDate(QDate(default_end.year, default_end.month, default_end.day))
 
     def _entry_local_date(self, p_entry: dict[str, str | int | None]) -> date:
         return self._display_day(p_entry)
@@ -184,6 +203,18 @@ class ShiftPlanViewDialog(QDialog):
             self._render_shift_rows(entries)
         else:
             self._render_day_rows(entries)
+
+    def _on_parameter_changed(self, *args):
+        if self._suspend_parameter_tracking:
+            return
+        self._set_refresh_pending(True)
+
+    def _on_refresh_clicked(self):
+        self._render_table()
+        self._set_refresh_pending(False)
+
+    def _set_refresh_pending(self, p_pending: bool):
+        self._load_button.setEnabled(p_pending)
 
     def _sorted_entries_for_display(
         self,

@@ -11,6 +11,10 @@
 | CR-007 | Tabelle `incident_analyst` um `opsgenie_id` erweitern | umgesetzt    | UC-001   | mittel    | 2026-02-28  | 2026-02-28   | [CR-007](./CR-007_Incident_Analyst_OpsGenieId.md) |
 | CR-008 | Abgleich Schichten mit Incident-Analysten über `opsgenie_id` | umgesetzt    | UC-004   | hoch      | 2026-02-28  | 2026-02-28   | [CR-008](./CR-008_Abgleich_Schichten_ueber_OpsGenieId.md) |
 | CR-009 | Vorababgleich fehlender `opsgenie_id` über E-Mail | umgesetzt    | UC-004   | hoch      | 2026-02-28  | 2026-02-28   | [CR-009](./CR-009_Vorababgleich_OpsGenieId_ueber_Email.md) |
+| CR-010 | Default-Ansicht auf „Tagesbezogen“ setzen | umgesetzt    | UC-008   | mittel    | 2026-02-28  | 2026-02-28   | [CR-010](./CR-010_Default_Ansicht_Tagesbezogen.md) |
+| CR-011 | Default-Zeitraum: letzte 2 Wochen (Mo-So) bis Vortag | umgesetzt    | UC-008   | hoch      | 2026-02-28  | 2026-02-28   | [CR-011](./CR-011_Default_Zeitraum_Letzte_2_Wochen_bis_Vortag.md) |
+| CR-012 | Layout: Von/Bis und Checkbox in einer Zeile | umgesetzt    | UC-008   | mittel    | 2026-02-28  | 2026-02-28   | [CR-012](./CR-012_Layout_Von_Bis_und_Checkbox_in_einer_Zeile.md) |
+| CR-013 | Button „Anzeige aktualisieren“ mit Dirty-State | umgesetzt    | UC-008   | hoch      | 2026-02-28  | 2026-02-28   | [CR-013](./CR-013_Button_Anzeige_aktualisieren_mit_Dirty_State.md) |
 
 ## Statusdefinition
 
