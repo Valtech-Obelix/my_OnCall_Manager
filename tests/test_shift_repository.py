@@ -28,6 +28,16 @@ def _create_repository() -> ShiftRepository:
         )
         """
     )
+    connection.execute(
+        """
+        CREATE TABLE schedule_registry (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            schedule_id TEXT NOT NULL UNIQUE,
+            schedule_name TEXT NOT NULL,
+            last_used TEXT NOT NULL
+        )
+        """
+    )
     return ShiftRepository(connection)
 
 
@@ -70,6 +80,23 @@ def test_has_import_history_for_schedule() -> None:
 
     assert repository.has_import_history_for_schedule("schedule-xyz") is True
     assert repository.has_import_history_for_schedule("schedule-none") is False
+
+
+def test_schedule_references_survive_clearing_shifts_and_import_history() -> None:
+    repository = _create_repository()
+    repository.save_schedule_reference(
+        p_schedule_id="schedule-keep",
+        p_schedule_name="Schichtplan Persistenz"
+    )
+
+    repository._connection.execute("DELETE FROM shifts")
+    repository._connection.execute("DELETE FROM import_history")
+    repository._connection.commit()
+
+    refs = repository.get_schedule_references()
+    assert len(refs) == 1
+    assert refs[0]["schedule_id"] == "schedule-keep"
+    assert refs[0]["schedule_name"] == "Schichtplan Persistenz"
 
 
 def test_get_schedule_time_bounds_for_schedule() -> None:

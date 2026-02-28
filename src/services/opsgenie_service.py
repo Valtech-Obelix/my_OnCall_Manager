@@ -33,6 +33,12 @@ class OpsGenieService:
         skipped = 0
         errors = 0
 
+        # CR-005: Schichtplan-Referenzen unabhängig von shifts/import_history speichern.
+        self._shift_repository.save_schedule_reference(
+            p_schedule_id=p_schedule_id,
+            p_schedule_name=p_schedule_name
+        )
+
         since, until, date_anchor, interval, interval_unit = self._get_import_window(
             p_schedule_id
         )
@@ -128,8 +134,8 @@ class OpsGenieService:
             p_errors=errors
         )
 
-    def get_import_history(self) -> list[dict[str, str]]:
-        return self._shift_repository.get_import_history()
+    def get_schedule_references(self) -> list[dict[str, str]]:
+        return self._shift_repository.get_schedule_references()
 
     def get_schedule_time_bounds_local(
         self,

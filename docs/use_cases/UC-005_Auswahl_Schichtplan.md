@@ -39,3 +39,4 @@ um ausschließlich fachlich relevante On-Call-Zeiträume der Incident-Analysten 
 - [CR-002 – Auswahl über Namen des Schichtplans](../change_requests/CR-002_Auswahl_ueber_Schichtplanname.md)
 - [CR-003 – Import-Button umbenennen](../change_requests/CR-003_Buttontext_Schichten_importieren.md)
 - [CR-004 – Button „Fertig“ im Import-Dialog ergänzen](../change_requests/CR-004_Button_Fertig_im_Importdialog.md)
+- [CR-005 – Schichtplan-Referenzen unabhängig persistieren](../change_requests/CR-005_Unabhaengige_Persistenz_Schichtplanreferenzen.md)

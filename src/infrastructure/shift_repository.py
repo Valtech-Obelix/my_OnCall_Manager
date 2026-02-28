@@ -67,6 +67,50 @@ class ShiftRepository:
         )
         self._connection.commit()
 
+    def save_schedule_reference(
+        self,
+        p_schedule_id: str,
+        p_schedule_name: str
+    ) -> None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            INSERT INTO schedule_registry (
+                schedule_id,
+                schedule_name,
+                last_used
+            )
+            VALUES (?, ?, datetime('now'))
+            ON CONFLICT(schedule_id)
+            DO UPDATE SET
+                schedule_name = excluded.schedule_name,
+                last_used = excluded.last_used
+            ''',
+            (p_schedule_id, p_schedule_name)
+        )
+        self._connection.commit()
+
+    def get_schedule_references(self) -> list[dict[str, str]]:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT schedule_id, schedule_name, last_used
+            FROM schedule_registry
+            ORDER BY datetime(last_used) DESC
+            '''
+        )
+
+        entries: list[dict[str, str]] = []
+        for schedule_id, schedule_name, last_used in cursor.fetchall():
+            entries.append(
+                {
+                    "schedule_id": schedule_id,
+                    "schedule_name": schedule_name,
+                    "last_used": last_used,
+                }
+            )
+        return entries
+
     def get_import_history(self) -> list[dict[str, str]]:
         cursor = self._connection.cursor()
         cursor.execute(

@@ -63,19 +63,16 @@ class OpsGenieImportDialog(QDialog):
         self._schedule_name_combo.clear()
         self._schedule_name_combo.addItem('')
 
-        history = self._service.get_import_history()
+        history = self._service.get_schedule_references()
         for entry in history:
             schedule_id = entry.get("schedule_id", "")
-            schedule_name = (
-                entry.get("schedule_name", "")
-                or entry.get("project", "")
-            )
-            last_import = entry.get("last_import", "")
+            schedule_name = entry.get("schedule_name", "")
+            last_used = entry.get("last_used", "")
 
             if schedule_name:
-                label = f'{schedule_name} - zuletzt: {last_import}'
+                label = f'{schedule_name} - zuletzt verwendet: {last_used}'
             else:
-                label = f'{schedule_id} - zuletzt: {last_import}'
+                label = f'{schedule_id} - zuletzt verwendet: {last_used}'
             self._schedule_name_combo.addItem(label)
             self._schedule_name_combo.setItemData(
                 self._schedule_name_combo.count() - 1,
@@ -98,10 +95,7 @@ class OpsGenieImportDialog(QDialog):
         if not entry:
             return
 
-        schedule_name = (
-            entry.get("schedule_name", "")
-            or entry.get("project", "")
-        )
+        schedule_name = entry.get("schedule_name", "")
         self._schedule_name_combo.setEditText(schedule_name)
         self._schedule_id_input.setText(entry.get("schedule_id", ""))
 

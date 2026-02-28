@@ -67,4 +67,16 @@ class Database:
             '''
         )
 
+        # Ref: CR-005 – Schichtplanstammdaten unabhängig von Import/Shift speichern
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS schedule_registry (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                schedule_id TEXT NOT NULL UNIQUE,
+                schedule_name TEXT NOT NULL,
+                last_used TEXT NOT NULL
+            )
+            '''
+        )
+
         self._connection.commit()

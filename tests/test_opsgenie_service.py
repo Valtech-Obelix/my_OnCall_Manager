@@ -33,6 +33,7 @@ class _FakeShiftRepository:
     def __init__(self, has_history: bool):
         self._has_history = has_history
         self.saved_history = []
+        self.saved_references = []
 
     def has_import_history_for_schedule(self, p_schedule_id: str) -> bool:
         return self._has_history
@@ -40,7 +41,10 @@ class _FakeShiftRepository:
     def save_import_history(self, p_schedule_id: str, p_schedule_name: str) -> None:
         self.saved_history.append((p_schedule_id, p_schedule_name))
 
-    def get_import_history(self):
+    def save_schedule_reference(self, p_schedule_id: str, p_schedule_name: str) -> None:
+        self.saved_references.append((p_schedule_id, p_schedule_name))
+
+    def get_schedule_references(self):
         return []
 
     def save(self, p_shift):
@@ -79,6 +83,7 @@ def test_first_import_uses_since_january_first_current_year() -> None:
     service.import_schedule("schedule-1", "Schichtplan A")
 
     assert len(client.calls) == 1
+    assert shift_repository.saved_references == [("schedule-1", "Schichtplan A")]
     since = client.calls[0]["since"]
     until = client.calls[0]["until"]
     date_anchor = client.calls[0]["date"]
@@ -104,6 +109,7 @@ def test_follow_up_import_uses_no_since_filter() -> None:
     service.import_schedule("schedule-1", "Schichtplan A")
 
     assert len(client.calls) == 1
+    assert shift_repository.saved_references == [("schedule-1", "Schichtplan A")]
     assert client.calls[0]["since"] is None
     assert client.calls[0]["until"] is None
     assert client.calls[0]["date"] is None
