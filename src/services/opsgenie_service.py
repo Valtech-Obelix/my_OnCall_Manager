@@ -1,4 +1,5 @@
 import  json
+from    pathlib                                             import Path
 from    datetime                                            import datetime
 from    src.domain.import_result                            import  ImportResult
 from    src.domain.shift                                    import  Shift
@@ -16,17 +17,20 @@ class OpsGenieService:
         p_client,
         p_shift_repository,
         p_analyst_repository,
-        p_logger
+        p_logger,
+        p_last_import_dump_file: str = 'debug/last_opsgenie_import.json'
     ):
         self._client = p_client
         self._shift_repository = p_shift_repository
         self._analyst_repository = p_analyst_repository
         self._logger = p_logger
+        self._last_import_dump_file = Path(p_last_import_dump_file)
 
     def import_schedule(
         self,
         p_schedule_id: str,
-        p_schedule_name: str
+        p_schedule_name: str,
+        p_dump_full_json: bool = False
     ) -> ImportResult:
 
         imported = 0
@@ -52,10 +56,8 @@ class OpsGenieService:
                 p_interval=interval,
                 p_interval_unit=interval_unit
             )
-
-            self._logger.debug('=== RAW OPSGENIE RESPONSE START ===')
-            self._logger.debug(json.dumps(timeline, indent=2))
-            self._logger.debug('=== RAW OPSGENIE RESPONSE END ===')
+            if p_dump_full_json:
+                self._write_last_import_json_dump(timeline)
 
         except (
             OpsGenieAuthException,
@@ -81,24 +83,41 @@ class OpsGenieService:
                     recipient = period.get('recipient')
 
                     if not recipient:
+                        self._log_skipped_period(
+                            p_reason='missing recipient',
+                            p_rotation=rotation,
+                            p_period=period
+                        )
                         skipped += 1
                         continue
 
                     if recipient.get('type') != 'user':
+                        self._log_skipped_period(
+                            p_reason='recipient is not a user',
+                            p_rotation=rotation,
+                            p_period=period
+                        )
                         skipped += 1
                         continue
 
                     email = recipient.get('name')
 
                     if not email:
+                        self._log_skipped_period(
+                            p_reason='missing recipient email',
+                            p_rotation=rotation,
+                            p_period=period
+                        )
                         skipped += 1
                         continue
 
                     analyst = self._analyst_repository.find_by_email(email)
 
                     if not analyst:
-                        self._logger.warning(
-                            f'No analyst found for email: {email}'
+                        self._log_skipped_period(
+                            p_reason=f'no analyst found for email: {email}',
+                            p_rotation=rotation,
+                            p_period=period
                         )
                         skipped += 1
                         continue
@@ -117,6 +136,11 @@ class OpsGenieService:
                     if saved:
                         imported += 1
                     else:
+                        self._log_skipped_period(
+                            p_reason='duplicate shift (already exists)',
+                            p_rotation=rotation,
+                            p_period=period
+                        )
                         skipped += 1
 
                 except Exception as ex:
@@ -134,8 +158,45 @@ class OpsGenieService:
             p_errors=errors
         )
 
+    def _log_skipped_period(
+        self,
+        p_reason: str,
+        p_rotation: dict,
+        p_period: dict
+    ) -> None:
+        start_date = p_period.get('startDate')
+        end_date = p_period.get('endDate')
+        snippet = {
+            'rotation': {
+                'id': p_rotation.get('id'),
+                'name': p_rotation.get('name')
+            },
+            'period': p_period
+        }
+        self._logger.warning(
+            'Skipped schedule entry: %s | startDate=%s | endDate=%s',
+            p_reason,
+            start_date,
+            end_date
+        )
+        self._logger.debug(
+            'Skipped schedule entry snippet: %s',
+            json.dumps(snippet, ensure_ascii=False)
+        )
+
     def get_schedule_references(self) -> list[dict[str, str]]:
         return self._shift_repository.get_schedule_references()
+
+    def _write_last_import_json_dump(self, p_timeline: dict) -> None:
+        self._last_import_dump_file.parent.mkdir(parents=True, exist_ok=True)
+        self._last_import_dump_file.write_text(
+            json.dumps(p_timeline, indent=2, ensure_ascii=False),
+            encoding='utf-8'
+        )
+        self._logger.info(
+            'Vollständiger OpsGenie JSON-Dump gespeichert: %s',
+            self._last_import_dump_file
+        )
 
     def get_schedule_time_bounds_local(
         self,

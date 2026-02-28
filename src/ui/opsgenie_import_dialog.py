@@ -4,6 +4,7 @@ from    PySide6.QtWidgets                                   import  (  QDialog
                                                                      , QFormLayout
                                                                      , QLineEdit
                                                                      , QComboBox
+                                                                     , QCheckBox
                                                                      , QPushButton
                                                                      , QMessageBox
                                                                     )
@@ -39,9 +40,15 @@ class OpsGenieImportDialog(QDialog):
         self._schedule_id_input.setMinimumWidth(500)
         self._schedule_id_input.setPlaceholderText('Schedule ID eingeben')
 
+        self._dump_json_checkbox = QCheckBox(
+            'Vollständigen JSON-Dump des letzten Imports speichern'
+        )
+        self._dump_json_checkbox.setChecked(False)
+
         form_layout = QFormLayout()
         form_layout.addRow('Name des Schichtplans:', self._schedule_name_combo)
         form_layout.addRow('Schedule ID:', self._schedule_id_input)
+        form_layout.addRow('', self._dump_json_checkbox)
 
         self._import_button = QPushButton('Schichten importieren')
         self._import_button.clicked.connect(self._on_import_clicked)
@@ -115,7 +122,8 @@ class OpsGenieImportDialog(QDialog):
         try:
             result = self._service.import_schedule(
                 p_schedule_id=schedule_id,
-                p_schedule_name=schedule_name
+                p_schedule_name=schedule_name,
+                p_dump_full_json=self._dump_json_checkbox.isChecked()
             )
             local_start, local_end = self._service.get_schedule_time_bounds_local(
                 schedule_id

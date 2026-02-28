@@ -1,7 +1,7 @@
 # UC-004 – OpsGenie Schichten importieren
 
 ## Version
-0.3
+0.5
 
 ---
 
@@ -13,12 +13,11 @@ um ausschließlich fachlich relevante On-Call-Zeiträume der Incident-Analysten 
 
 ---
 
-## Motivation für Version 0.3
+## Motivation für Version 0.5
 
-Version 0.3 ergänzt die Importfunktion um:
-- Verwendung von `Schedule ID` plus `Name des Schichtplans` im UI.
-- Persistente Historie bereits importierter Schichtpläne.
-- Anzeige des importierten Zeitraums in lokaler Zeit `Europe/Berlin` (inkl. Sommer-/Winterzeit).
+Version 0.5 ergänzt die Importfunktion um:
+- Logging übersprungener Schichtplan-Einträge als Warning (Grund) und Debug (JSON-Ausschnitt).
+- Optionale Checkbox für einen vollständigen JSON-Dump des letzten Imports.
 
 ---
 
@@ -58,14 +57,16 @@ Auswahl „OpsGenie Schichten importieren“ im Hauptmenü.
 
 1. Administrator öffnet den Import-Dialog.
 2. Administrator wählt einen vorhandenen Schichtplan oder erfasst `Schedule ID` und `Name des Schichtplans`.
-3. Administrator startet den Import.
-4. System ruft über die OpsGenie-API die Timeline des Schedules ab.
-5. System iteriert über alle Rotations und Perioden.
-6. System ordnet jede Periode über Email einem Incident-Analysten zu.
-7. System speichert die Schicht, sofern sie noch nicht existiert.
-8. System aktualisiert die Import-Historie.
-9. System zeigt das Import-Ergebnis (`imported / skipped / errors`) an.
-10. System zeigt den importierten Zeitraum in lokaler Zeit `Europe/Berlin` an.
+3. Administrator kann optional die Checkbox „Vollständigen JSON-Dump des letzten Imports speichern“ aktivieren.
+4. Administrator startet den Import.
+5. System ruft über die OpsGenie-API die Timeline des Schedules ab.
+6. System iteriert über alle Rotations und Perioden.
+7. System ordnet jede Periode über Email einem Incident-Analysten zu.
+8. System speichert die Schicht, sofern sie noch nicht existiert.
+9. System aktualisiert die Import-Historie.
+10. Bei aktivierter Checkbox speichert das System den vollständigen JSON-Content als letzten Import.
+11. System zeigt das Import-Ergebnis (`imported / skipped / errors`) an.
+12. System zeigt den importierten Zeitraum in lokaler Zeit `Europe/Berlin` an.
 
 ---
 
@@ -100,7 +101,10 @@ Auswahl „OpsGenie Schichten importieren“ im Hauptmenü.
 - Mehrfachimport erzeugt keine Duplikate.
 - Email-Zuordnung erfolgt case-insensitive.
 - Fehler werden geloggt.
-- RAW-JSON wird ausschließlich im DEBUG-Level geloggt.
+- Übersprungene Einträge werden als Warning mit Grund geloggt.
+- Zu jedem übersprungenen Eintrag wird ein Debug-Log mit JSON-Ausschnitt geloggt.
+- Der vollständige RAW-JSON-Response wird nicht mehr geloggt.
+- Bei aktivierter Checkbox wird ein vollständiger JSON-Dump des letzten Imports gespeichert.
 - Der importierte Zeitraum wird nach dem Import in `Europe/Berlin` angezeigt (DST-sicher).
 
 ---
@@ -120,6 +124,14 @@ Tabelle: `shifts`
 ---
 
 ## Änderungsverlauf
+## Version 0.5
+- Warning-/Debug-Splitting für übersprungene Einträge ergänzt.
+- Checkbox für optionalen JSON-Dump des letzten Imports ergänzt.
+
+## Version 0.4
+- Logging für übersprungene Schichtplan-Einträge mit JSON-Ausschnitt ergänzt.
+- Vollständiges RAW-JSON-Logging entfernt.
+
 ## Version 0.3
 - Feld „Projekt“ ersetzt durch „Name des Schichtplans“.
 - Importhistorie und Schichtplan-Auswahl integriert (siehe UC-005).

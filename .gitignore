@@ -229,3 +229,6 @@ docs/_build/
 
 # lokale SQL-Skripte
 src/sql/*.sql
+
+# lokale Debug Files
+debug/*.*
