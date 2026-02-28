@@ -122,3 +122,25 @@ def test_update_persists_changed_fields() -> None:
     assert updated.opsgenie_id == "325b3fbf-cbb2-4724-abe1-4fb488655ede"
     assert updated.start_datum == date(2025, 2, 1)
     assert updated.ende_datum == date(2025, 12, 31)
+
+
+def test_update_opsgenie_id_sets_value() -> None:
+    repository = _create_repository()
+    created = repository.add(
+        IncidentAnalyst(
+            p_id=None,
+            p_vornamen="Alex",
+            p_nachname="Hergenroeder",
+            p_email="alexander.hergenroeder@valtech-mobility.com",
+            p_start_datum=date(2025, 1, 1),
+        )
+    )
+
+    repository.update_opsgenie_id(
+        p_id=created.id,
+        p_opsgenie_id="3fb94b87-755b-4bc1-a4bf-fdf79f445dda"
+    )
+
+    updated = repository.find_by_id(created.id)
+    assert updated is not None
+    assert updated.opsgenie_id == "3fb94b87-755b-4bc1-a4bf-fdf79f445dda"

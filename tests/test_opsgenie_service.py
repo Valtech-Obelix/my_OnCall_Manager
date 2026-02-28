@@ -52,8 +52,27 @@ class _FakeShiftRepository:
 
 
 class _FakeAnalystRepository:
+    def __init__(self):
+        self.by_opsgenie_id = {}
+        self.by_email = {}
+        self.updated_opsgenie_ids = []
+
     def find_by_opsgenie_id(self, p_opsgenie_id: str):
-        return None
+        return self.by_opsgenie_id.get((p_opsgenie_id or "").lower())
+
+    def find_by_email(self, p_email: str):
+        return self.by_email.get((p_email or "").lower())
+
+    def update_opsgenie_id(self, p_id: int, p_opsgenie_id: str):
+        self.updated_opsgenie_ids.append((p_id, p_opsgenie_id))
+        target = None
+        for analyst in self.by_email.values():
+            if analyst.id == p_id:
+                target = analyst
+                break
+        if target is not None:
+            target.opsgenie_id = p_opsgenie_id
+            self.by_opsgenie_id[p_opsgenie_id.lower()] = target
 
 
 class _FakeLogger:
@@ -228,3 +247,103 @@ def test_optional_full_json_dump_writes_last_import_file(tmp_path) -> None:
         "Vollständiger OpsGenie JSON-Dump gespeichert:" in msg
         for msg in logger.info_messages
     )
+
+
+class _SimpleAnalyst:
+    def __init__(self, p_id, p_email, p_buchungsname, p_opsgenie_id=None):
+        self.id = p_id
+        self.email = p_email
+        self.buchungsname = p_buchungsname
+        self.opsgenie_id = p_opsgenie_id
+
+
+def test_precheck_enriches_opsgenie_id_by_email_before_import() -> None:
+    timeline = {
+        "data": {
+            "finalTimeline": {
+                "rotations": [
+                    {
+                        "id": "rotation-1",
+                        "name": "Primary",
+                        "periods": [
+                            {
+                                "startDate": "2026-02-27T08:00:00Z",
+                                "endDate": "2026-02-27T16:00:00Z",
+                                "recipient": {
+                                    "id": "3fb94b87-755b-4bc1-a4bf-fdf79f445dda",
+                                    "type": "user",
+                                    "name": "alexander.hergenroeder@valtech-mobility.com",
+                                },
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
+    }
+    client = _FakeTimelineClient(timeline)
+    analysts = _FakeAnalystRepository()
+    analysts.by_email["alexander.hergenroeder@valtech-mobility.com"] = _SimpleAnalyst(
+        p_id=1,
+        p_email="alexander.hergenroeder@valtech-mobility.com",
+        p_buchungsname="Alexander Hergenroeder",
+        p_opsgenie_id=None,
+    )
+    shift_repository = _FakeShiftRepository(has_history=True)
+    service = OpsGenieService(
+        p_client=client,
+        p_shift_repository=shift_repository,
+        p_analyst_repository=analysts,
+        p_logger=_FakeLogger(),
+    )
+
+    result = service.import_schedule("schedule-1", "Schichtplan A")
+
+    assert (1, "3fb94b87-755b-4bc1-a4bf-fdf79f445dda") in analysts.updated_opsgenie_ids
+    assert result.imported == 1
+    assert result.skipped == 0
+
+
+def test_precheck_does_not_override_conflicting_opsgenie_id() -> None:
+    timeline = {
+        "data": {
+            "finalTimeline": {
+                "rotations": [
+                    {
+                        "id": "rotation-1",
+                        "name": "Primary",
+                        "periods": [
+                            {
+                                "startDate": "2026-02-27T08:00:00Z",
+                                "endDate": "2026-02-27T16:00:00Z",
+                                "recipient": {
+                                    "id": "new-id-123",
+                                    "type": "user",
+                                    "name": "alexander.hergenroeder@valtech-mobility.com",
+                                },
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
+    }
+    client = _FakeTimelineClient(timeline)
+    analysts = _FakeAnalystRepository()
+    analysts.by_email["alexander.hergenroeder@valtech-mobility.com"] = _SimpleAnalyst(
+        p_id=1,
+        p_email="alexander.hergenroeder@valtech-mobility.com",
+        p_buchungsname="Alexander Hergenroeder",
+        p_opsgenie_id="old-id-999",
+    )
+    service = OpsGenieService(
+        p_client=client,
+        p_shift_repository=_FakeShiftRepository(has_history=True),
+        p_analyst_repository=analysts,
+        p_logger=_FakeLogger(),
+    )
+
+    result = service.import_schedule("schedule-1", "Schichtplan A")
+
+    assert analysts.updated_opsgenie_ids == []
+    assert result.skipped == 1

@@ -74,6 +74,8 @@ class OpsGenieService:
                     .get('rotations', [])
         )
 
+        self._enrich_opsgenie_ids_from_timeline(rotations)
+
         for rotation in rotations:
             periods = rotation.get('periods', [])
 
@@ -159,6 +161,69 @@ class OpsGenieService:
             p_skipped=skipped,
             p_errors=errors
         )
+
+    def _enrich_opsgenie_ids_from_timeline(self, p_rotations: list[dict]) -> None:
+        seen_pairs: set[tuple[str, str]] = set()
+
+        for rotation in p_rotations:
+            for period in rotation.get('periods', []):
+                recipient = period.get('recipient') or {}
+                if recipient.get('type') != 'user':
+                    continue
+
+                recipient_id = (recipient.get('id') or '').strip()
+                recipient_email = (recipient.get('name') or '').strip()
+                if not recipient_id:
+                    continue
+
+                if self._analyst_repository.find_by_opsgenie_id(recipient_id):
+                    continue
+
+                if not recipient_email:
+                    self._logger.warning(
+                        'OpsGenie ID %s konnte nicht automatisch zugeordnet werden '
+                        '(recipient.name fehlt).',
+                        recipient_id
+                    )
+                    continue
+
+                marker = (recipient_id.lower(), recipient_email.lower())
+                if marker in seen_pairs:
+                    continue
+                seen_pairs.add(marker)
+
+                analyst = self._analyst_repository.find_by_email(recipient_email)
+                if not analyst:
+                    self._logger.warning(
+                        'OpsGenie ID %s konnte nicht über E-Mail %s zugeordnet werden.',
+                        recipient_id,
+                        recipient_email
+                    )
+                    continue
+
+                if (
+                    analyst.opsgenie_id
+                    and analyst.opsgenie_id.strip().lower() != recipient_id.lower()
+                ):
+                    self._logger.warning(
+                        'OpsGenie ID Konflikt für Analyst %s (%s): bestehend=%s, neu=%s',
+                        analyst.buchungsname,
+                        analyst.email,
+                        analyst.opsgenie_id,
+                        recipient_id
+                    )
+                    continue
+
+                self._analyst_repository.update_opsgenie_id(
+                    p_id=analyst.id,
+                    p_opsgenie_id=recipient_id
+                )
+                self._logger.info(
+                    'OpsGenie ID automatisch ergänzt: %s -> %s (%s)',
+                    recipient_email,
+                    recipient_id,
+                    analyst.buchungsname
+                )
 
     def _log_skipped_period(
         self,

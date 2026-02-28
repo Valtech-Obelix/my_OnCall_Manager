@@ -262,3 +262,15 @@ class IncidentAnalystRepository:
         )
         self._connection.commit()
         return p_analyst
+
+    def update_opsgenie_id(self, p_id: int, p_opsgenie_id: str) -> None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            f'''
+            UPDATE {TABLE_NAME}
+            SET opsgenie_id = ?
+            WHERE id = ?
+            ''',
+            (p_opsgenie_id, p_id)
+        )
+        self._connection.commit()
