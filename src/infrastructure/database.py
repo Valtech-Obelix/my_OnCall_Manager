@@ -34,11 +34,15 @@ class Database:
                 nachname        TEXT NOT NULL,
                 buchungsname    TEXT NOT NULL,
                 email           TEXT NOT NULL UNIQUE,
+                opsgenie_id     TEXT,
                 start_datum     TEXT NOT NULL,
                 ende_datum      TEXT
             )
             '''
         )
+
+        # Ref: CR-007 – bestehende Daten erhalten und OpsGenieId nachrüsten
+        self._ensure_incident_analyst_opsgenie_id_column()
 
         # Ref: UC-004 v0.1 – Shift Tabelle
         cursor.execute(
@@ -80,3 +84,10 @@ class Database:
         )
 
         self._connection.commit()
+
+    def _ensure_incident_analyst_opsgenie_id_column(self):
+        cursor = self._connection.cursor()
+        cursor.execute("PRAGMA table_info(incident_analyst)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "opsgenie_id" not in columns:
+            cursor.execute("ALTER TABLE incident_analyst ADD COLUMN opsgenie_id TEXT")

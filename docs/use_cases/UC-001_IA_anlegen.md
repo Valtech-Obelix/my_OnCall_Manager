@@ -86,6 +86,7 @@ Neue Spalten:
 - vorname                              TEXT NOT NULL
 - nachname                             TEXT NOT NULL
 - buchungsname                         TEXT NOT NULL
+- opsgenie_id                          TEXT NULL
 - start_datum                          DATE NOT NULL
 - end_datum                            DATE NULL
 
@@ -100,6 +101,10 @@ Neue Spalten:
 umgesetzt
 
 ## Änderungsverlauf
+
+### Version 0.3
+- Datenbankschema um optionale Spalte `opsgenie_id` erweitert
+- Migration ohne Datenverlust für bestehende `incident_analyst`-Datensätze
 
 ### Version 0.2
 - Erweiterung um Vorname und Nachname
