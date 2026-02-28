@@ -1,9 +1,14 @@
 import  json
 from    pathlib                                             import Path
-from    datetime                                            import datetime
+from    datetime                                            import datetime, timedelta
 from    src.domain.import_result                            import  ImportResult
 from    src.domain.shift                                    import  Shift
-from    src.infrastructure.timezone_utils                   import  format_utc_as_berlin
+from    src.infrastructure.timezone_utils                   import  (
+                                                                        format_utc_as_berlin,
+                                                                        parse_utc_timestamp,
+                                                                        BERLIN,
+                                                                        UTC
+                                                                    )
 from    src.domain.exceptions                               import  (  OpsGenieApiException
                                                                      , OpsGenieAuthException
                                                                      , OpsGenieConnectionException
@@ -11,6 +16,7 @@ from    src.domain.exceptions                               import  (  OpsGenieA
                                                                     )
 
 class OpsGenieService:
+    SHIFT_BOUNDARY_HOUR = 1
 
     def __init__(
         self,
@@ -37,7 +43,7 @@ class OpsGenieService:
         skipped = 0
         errors = 0
 
-        # CR-005: Schichtplan-Referenzen unabhängig von shifts/import_history speichern.
+        # CR-005: Schichtplan-Referenzen unabhängig von shifts speichern.
         self._shift_repository.save_schedule_reference(
             p_schedule_id=p_schedule_id,
             p_schedule_name=p_schedule_name
@@ -150,11 +156,6 @@ class OpsGenieService:
                 except Exception as ex:
                     self._logger.error(f'Shift processing failed: {ex}')
                     errors += 1
-
-        self._shift_repository.save_import_history(
-            p_schedule_id=p_schedule_id,
-            p_schedule_name=p_schedule_name
-        )
 
         return ImportResult(
             p_imported=imported,
@@ -289,25 +290,42 @@ class OpsGenieService:
         int | None,
         str | None
     ]:
-        has_history = self._shift_repository.has_import_history_for_schedule(
-            p_schedule_id
-        )
-        if has_history:
-            return None, None, None, None, None
+        now_local = self._current_local_time()
+        last_complete_day_offset = 1 if now_local.hour >= self.SHIFT_BOUNDARY_HOUR else 2
+        last_complete_day_local = (now_local - timedelta(days=last_complete_day_offset)).date()
 
-        current_year = datetime.now().year
-        since = datetime(current_year, 1, 1, 0, 0, 0)
-        until = datetime(current_year, 12, 31, 23, 59, 59)
+        _, max_end = self._shift_repository.get_schedule_time_bounds(p_schedule_id)
+        if max_end:
+            since_dt = parse_utc_timestamp(max_end).astimezone(UTC) + timedelta(seconds=1)
+            since = since_dt.replace(tzinfo=None)
+        else:
+            since = datetime(last_complete_day_local.year, 1, 1, 0, 0, 0)
+
+        until_local = datetime(
+            last_complete_day_local.year,
+            last_complete_day_local.month,
+            last_complete_day_local.day,
+            self.SHIFT_BOUNDARY_HOUR,
+            0,
+            0,
+            tzinfo=BERLIN
+        ) + timedelta(days=1)
+        until = until_local.astimezone(UTC).replace(tzinfo=None)
         date_anchor = since
         interval = 12
         interval_unit = "months"
         self._logger.info(
-            "Erstimport für Schedule %s: since=%s until=%s date=%s interval=%s %s",
+            "Importfenster für Schedule %s: since=%s until=%s date=%s interval=%s %s (letzter vollständiger Schichttag local=%s, max_end=%s)",
             p_schedule_id,
             since.isoformat() + "Z",
             until.isoformat() + "Z",
             date_anchor.isoformat() + "Z",
             interval,
-            interval_unit
+            interval_unit,
+            last_complete_day_local.isoformat(),
+            max_end
         )
         return since, until, date_anchor, interval, interval_unit
+
+    def _current_local_time(self) -> datetime:
+        return datetime.now(BERLIN)

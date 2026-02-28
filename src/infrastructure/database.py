@@ -60,17 +60,6 @@ class Database:
             '''
         )
 
-        # Ref: UC-004 v0.1 – Import History
-        cursor.execute(
-            '''
-            CREATE TABLE IF NOT EXISTS import_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                source TEXT NOT NULL UNIQUE,
-                last_import TEXT NOT NULL
-            )
-            '''
-        )
-
         # Ref: CR-005 – Schichtplanstammdaten unabhängig von Import/Shift speichern
         cursor.execute(
             '''
@@ -82,6 +71,9 @@ class Database:
             )
             '''
         )
+
+        # Legacy cleanup: import_history wird nicht mehr verwendet.
+        cursor.execute("DROP TABLE IF EXISTS import_history")
 
         self._connection.commit()
 

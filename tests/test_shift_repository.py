@@ -35,15 +35,6 @@ def _create_repository() -> ShiftRepository:
     )
     connection.execute(
         """
-        CREATE TABLE import_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            source TEXT NOT NULL UNIQUE,
-            last_import TEXT NOT NULL
-        )
-        """
-    )
-    connection.execute(
-        """
         CREATE TABLE schedule_registry (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             schedule_id TEXT NOT NULL UNIQUE,
@@ -70,33 +61,7 @@ def test_save_returns_false_for_duplicate_shift() -> None:
     assert repository.save(shift) is False
 
 
-def test_import_history_roundtrip() -> None:
-    repository = _create_repository()
-    repository.save_import_history(
-        p_schedule_id="schedule-123",
-        p_schedule_name="Schichtplan A"
-    )
-
-    history = repository.get_import_history()
-
-    assert len(history) == 1
-    assert history[0]["schedule_id"] == "schedule-123"
-    assert history[0]["schedule_name"] == "Schichtplan A"
-    assert history[0]["last_import"]
-
-
-def test_has_import_history_for_schedule() -> None:
-    repository = _create_repository()
-    repository.save_import_history(
-        p_schedule_id="schedule-xyz",
-        p_schedule_name="Schichtplan B"
-    )
-
-    assert repository.has_import_history_for_schedule("schedule-xyz") is True
-    assert repository.has_import_history_for_schedule("schedule-none") is False
-
-
-def test_schedule_references_survive_clearing_shifts_and_import_history() -> None:
+def test_schedule_references_survive_clearing_shifts() -> None:
     repository = _create_repository()
     repository.save_schedule_reference(
         p_schedule_id="schedule-keep",
@@ -104,7 +69,6 @@ def test_schedule_references_survive_clearing_shifts_and_import_history() -> Non
     )
 
     repository._connection.execute("DELETE FROM shifts")
-    repository._connection.execute("DELETE FROM import_history")
     repository._connection.commit()
 
     refs = repository.get_schedule_references()

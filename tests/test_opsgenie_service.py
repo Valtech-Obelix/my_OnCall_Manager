@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from src.infrastructure.timezone_utils import BERLIN
 from src.services.opsgenie_service import OpsGenieService
 
 
@@ -30,16 +31,9 @@ class _FakeClient:
 
 
 class _FakeShiftRepository:
-    def __init__(self, has_history: bool):
-        self._has_history = has_history
-        self.saved_history = []
+    def __init__(self, p_max_end: str | None = None):
+        self._max_end = p_max_end
         self.saved_references = []
-
-    def has_import_history_for_schedule(self, p_schedule_id: str) -> bool:
-        return self._has_history
-
-    def save_import_history(self, p_schedule_id: str, p_schedule_name: str) -> None:
-        self.saved_history.append((p_schedule_id, p_schedule_name))
 
     def save_schedule_reference(self, p_schedule_id: str, p_schedule_name: str) -> None:
         self.saved_references.append((p_schedule_id, p_schedule_name))
@@ -49,6 +43,9 @@ class _FakeShiftRepository:
 
     def save(self, p_shift):
         return True
+
+    def get_schedule_time_bounds(self, p_schedule_id: str):
+        return None, self._max_end
 
 
 class _FakeAnalystRepository:
@@ -126,10 +123,22 @@ class _FakeTimelineClient(_FakeClient):
         return self._timeline
 
 
-def test_first_import_uses_since_january_first_current_year() -> None:
+class _FixedNowOpsGenieService(OpsGenieService):
+    def __init__(self, p_now_local: datetime, **kwargs):
+        super().__init__(**kwargs)
+        self._now_local = p_now_local
+
+    def _current_local_time(self) -> datetime:
+        return self._now_local
+
+
+def test_import_before_01_00_uses_yesterday_minus_one_day_as_last_complete_day() -> None:
     client = _FakeClient()
-    shift_repository = _FakeShiftRepository(has_history=False)
-    service = OpsGenieService(
+    shift_repository = _FakeShiftRepository(
+        p_max_end="2026-02-15T16:00:00Z"
+    )
+    service = _FixedNowOpsGenieService(
+        p_now_local=datetime(2026, 3, 1, 0, 30, 0, tzinfo=BERLIN),
         p_client=client,
         p_shift_repository=shift_repository,
         p_analyst_repository=_FakeAnalystRepository(),
@@ -145,17 +154,20 @@ def test_first_import_uses_since_january_first_current_year() -> None:
     date_anchor = client.calls[0]["date"]
     interval = client.calls[0]["interval"]
     interval_unit = client.calls[0]["interval_unit"]
-    assert since == datetime(datetime.now().year, 1, 1, 0, 0, 0)
-    assert until == datetime(datetime.now().year, 12, 31, 23, 59, 59)
-    assert date_anchor == datetime(datetime.now().year, 1, 1, 0, 0, 0)
+    assert since == datetime(2026, 2, 15, 16, 0, 1)
+    assert until == datetime(2026, 2, 28, 0, 0, 0)
+    assert date_anchor == datetime(2026, 2, 15, 16, 0, 1)
     assert interval == 12
     assert interval_unit == "months"
 
 
-def test_follow_up_import_uses_no_since_filter() -> None:
+def test_import_after_01_00_uses_previous_day_as_last_complete_day() -> None:
     client = _FakeClient()
-    shift_repository = _FakeShiftRepository(has_history=True)
-    service = OpsGenieService(
+    shift_repository = _FakeShiftRepository(
+        p_max_end="2026-02-28T16:00:00Z"
+    )
+    service = _FixedNowOpsGenieService(
+        p_now_local=datetime(2026, 3, 1, 1, 5, 0, tzinfo=BERLIN),
         p_client=client,
         p_shift_repository=shift_repository,
         p_analyst_repository=_FakeAnalystRepository(),
@@ -166,11 +178,33 @@ def test_follow_up_import_uses_no_since_filter() -> None:
 
     assert len(client.calls) == 1
     assert shift_repository.saved_references == [("schedule-1", "Schichtplan A")]
-    assert client.calls[0]["since"] is None
-    assert client.calls[0]["until"] is None
-    assert client.calls[0]["date"] is None
-    assert client.calls[0]["interval"] is None
-    assert client.calls[0]["interval_unit"] is None
+    since = client.calls[0]["since"]
+    until = client.calls[0]["until"]
+    date_anchor = client.calls[0]["date"]
+    interval = client.calls[0]["interval"]
+    interval_unit = client.calls[0]["interval_unit"]
+    assert since == datetime(2026, 2, 28, 16, 0, 1)
+    assert until == datetime(2026, 3, 1, 0, 0, 0)
+    assert date_anchor == datetime(2026, 2, 28, 16, 0, 1)
+    assert interval == 12
+    assert interval_unit == "months"
+
+
+def test_import_without_existing_shifts_starts_at_january_first() -> None:
+    client = _FakeClient()
+    shift_repository = _FakeShiftRepository(p_max_end=None)
+    service = _FixedNowOpsGenieService(
+        p_now_local=datetime(2026, 3, 1, 1, 5, 0, tzinfo=BERLIN),
+        p_client=client,
+        p_shift_repository=shift_repository,
+        p_analyst_repository=_FakeAnalystRepository(),
+        p_logger=_FakeLogger(),
+    )
+
+    service.import_schedule("schedule-1", "Schichtplan A")
+
+    assert len(client.calls) == 1
+    assert client.calls[0]["since"] == datetime(2026, 1, 1, 0, 0, 0)
 
 
 def test_skipped_entries_log_reason_and_json_snippet() -> None:
@@ -196,7 +230,7 @@ def test_skipped_entries_log_reason_and_json_snippet() -> None:
     logger = _FakeLogger()
     service = OpsGenieService(
         p_client=client,
-        p_shift_repository=_FakeShiftRepository(has_history=True),
+        p_shift_repository=_FakeShiftRepository(),
         p_analyst_repository=_FakeAnalystRepository(),
         p_logger=logger,
     )
@@ -229,7 +263,7 @@ def test_optional_full_json_dump_writes_last_import_file(tmp_path) -> None:
     dump_file = tmp_path / "debug" / "last_opsgenie_import.json"
     service = OpsGenieService(
         p_client=client,
-        p_shift_repository=_FakeShiftRepository(has_history=True),
+        p_shift_repository=_FakeShiftRepository(),
         p_analyst_repository=_FakeAnalystRepository(),
         p_logger=logger,
         p_last_import_dump_file=str(dump_file),
@@ -289,7 +323,7 @@ def test_precheck_enriches_opsgenie_id_by_email_before_import() -> None:
         p_buchungsname="Alexander Hergenroeder",
         p_opsgenie_id=None,
     )
-    shift_repository = _FakeShiftRepository(has_history=True)
+    shift_repository = _FakeShiftRepository()
     service = OpsGenieService(
         p_client=client,
         p_shift_repository=shift_repository,
@@ -338,7 +372,7 @@ def test_precheck_does_not_override_conflicting_opsgenie_id() -> None:
     )
     service = OpsGenieService(
         p_client=client,
-        p_shift_repository=_FakeShiftRepository(has_history=True),
+        p_shift_repository=_FakeShiftRepository(),
         p_analyst_repository=analysts,
         p_logger=_FakeLogger(),
     )
