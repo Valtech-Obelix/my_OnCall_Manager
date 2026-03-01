@@ -20,6 +20,7 @@
 | CR-016 | Datenstruktur für Entlohnungsklassen anlegen (Schritt 1) | umgesetzt    | UC-010   | hoch      | 2026-03-01  | 2026-03-01   | [CR-016](./CR-016_Datenstruktur_Entlohnungsklassen_Schritt_1.md) |
 | CR-017 | Kombinierter Anzeige-/Erfassungsdialog für Rufbereitschaftsstandorte | umgesetzt    | UC-011   | hoch      | 2026-03-01  | 2026-03-01   | [CR-017](./CR-017_Dialog_Rufbereitschaftsstandorte.md) |
 | CR-018 | Incident-Analysten einem Rufbereitschaftsstandort zuordnen (Option 1) | umgesetzt    | UC-011   | hoch      | 2026-03-01  | 2026-03-01   | [CR-018](./CR-018_Incident_Analyst_Standortzuordnung.md) |
+| CR-019 | Umbau IA-Erfassungsoberfläche analog Standortdialog | umgesetzt    | UC-001/2/3/7/11 | hoch      | 2026-03-01  | 2026-03-01   | [CR-019](./CR-019_Umbau_IA_Dialog_analog_Standortdialog.md) |
 
 ## Statusdefinition
 
