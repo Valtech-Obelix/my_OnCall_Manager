@@ -9,12 +9,14 @@ from    datetime                                            import  date
 from    src.ui.incident_analyst_dialog                      import  IncidentAnalystDialog
 from    src.ui.opsgenie_import_dialog                       import  OpsGenieImportDialog
 from    src.ui.shift_plan_view_dialog                       import  ShiftPlanViewDialog
+from    src.ui.incident_analyst_shift_count_dialog          import  IncidentAnalystShiftCountDialog
 
 
 APP_TITLE                               =   'my_OnCall_Manager'
 BUTTON_MANAGE_ANALYSTS                  =   'Incident Analysten verwalten'
 BUTTON_IMPORT_SHIFTS                    =   'OpsGenie Schichten importieren'
 BUTTON_VIEW_SHIFT_PLAN                  =   'Schichtplan anzeigen'
+BUTTON_VIEW_IA_SHIFT_COUNTS             =   'Aktive IA Schichtanzahl anzeigen'
 
 
 class MainWindow(QMainWindow):
@@ -50,6 +52,12 @@ class MainWindow(QMainWindow):
         self._view_shift_plan_button.clicked.connect(self._open_shift_plan_view_dialog)
         layout.addWidget(self._view_shift_plan_button)
 
+        self._view_ia_shift_counts_button = QPushButton(BUTTON_VIEW_IA_SHIFT_COUNTS)
+        self._view_ia_shift_counts_button.clicked.connect(
+            self._open_incident_analyst_shift_count_dialog
+        )
+        layout.addWidget(self._view_ia_shift_counts_button)
+
         layout.addStretch()
 
         central_widget.setLayout(layout)
@@ -72,4 +80,7 @@ class MainWindow(QMainWindow):
     def _open_shift_plan_view_dialog(self):
         dialog = ShiftPlanViewDialog(self._application, self)
         dialog.exec()
-        
+
+    def _open_incident_analyst_shift_count_dialog(self):
+        dialog = IncidentAnalystShiftCountDialog(self._application, self)
+        dialog.exec()

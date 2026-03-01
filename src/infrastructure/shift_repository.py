@@ -141,3 +141,66 @@ class ShiftRepository:
                 }
             )
         return entries
+
+    def get_active_analyst_shift_counts_last_weeks(
+        self,
+        p_weeks: int
+    ) -> list[dict[str, str | int]]:
+        cursor = self._connection.cursor()
+        days = max(1, int(p_weeks)) * 7
+        cursor.execute(
+            '''
+            SELECT
+                ia.buchungsname,
+                COUNT(s.id) AS shift_count
+            FROM incident_analyst ia
+            LEFT JOIN shifts s
+                ON s.analyst_id = ia.id
+               AND datetime(replace(replace(s.start_time, 'T', ' '), 'Z', ''))
+                   >= datetime('now', ?)
+               AND datetime(replace(replace(s.start_time, 'T', ' '), 'Z', ''))
+                   < datetime('now')
+            WHERE ia.ende_datum IS NULL
+            GROUP BY ia.id, ia.buchungsname
+            ORDER BY shift_count DESC, ia.buchungsname ASC
+            ''',
+            (f'-{days} days',)
+        )
+
+        entries: list[dict[str, str | int]] = []
+        for buchungsname, shift_count in cursor.fetchall():
+            entries.append(
+                {
+                    "buchungsname": buchungsname,
+                    "shift_count": int(shift_count),
+                }
+            )
+        return entries
+
+    def get_setting(self, p_key: str) -> str | None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT value
+            FROM app_settings
+            WHERE key = ?
+            ''',
+            (p_key,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return row[0]
+
+    def set_setting(self, p_key: str, p_value: str) -> None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            INSERT INTO app_settings (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key)
+            DO UPDATE SET value = excluded.value
+            ''',
+            (p_key, p_value)
+        )
+        self._connection.commit()

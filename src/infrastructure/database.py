@@ -72,6 +72,15 @@ class Database:
             '''
         )
 
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            '''
+        )
+
         # Legacy cleanup: import_history wird nicht mehr verwendet.
         cursor.execute("DROP TABLE IF EXISTS import_history")
 

@@ -10,6 +10,7 @@
 | UC-006 | Erstimport ab Jahresbeginn           | abgeschlossen | 0.2     |
 | UC-007 | IA bearbeiten                        | abgeschlossen | 0.1     |
 | UC-008 | Schichtplan anzeigen                 | abgeschlossen | 0.1     |
+| UC-009 | Aktive IA nach Schichtanzahl anzeigen | abgeschlossen | 0.1     |
 
 ## Verknüpfte Änderungshistorie
 

@@ -16,6 +16,7 @@
 | CR-012 | Layout: Von/Bis und Checkbox in einer Zeile | umgesetzt    | UC-008   | mittel    | 2026-02-28  | 2026-02-28   | [CR-012](./CR-012_Layout_Von_Bis_und_Checkbox_in_einer_Zeile.md) |
 | CR-013 | Button „Anzeige aktualisieren“ mit Dirty-State | umgesetzt    | UC-008   | hoch      | 2026-02-28  | 2026-02-28   | [CR-013](./CR-013_Button_Anzeige_aktualisieren_mit_Dirty_State.md) |
 | CR-014 | Import-Dialog zeigt nächsten Importstart | umgesetzt    | UC-005   | mittel    | 2026-02-28  | 2026-02-28   | [CR-014](./CR-014_Importdialog_zeigt_naechsten_Importstart.md) |
+| CR-015 | Dialog „Aktive IA Schichtanzahl“ inkl. persistiertem Wochenwert | umgesetzt    | UC-009   | hoch      | 2026-03-01  | 2026-03-01   | [CR-015](./CR-015_Dialog_Aktive_IA_Schichtanzahl.md) |
 
 ## Statusdefinition
 

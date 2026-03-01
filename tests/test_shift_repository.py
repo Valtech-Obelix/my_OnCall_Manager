@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime, timedelta, UTC
 
 from src.domain.shift import Shift
 from src.infrastructure.shift_repository import ShiftRepository
@@ -40,6 +41,14 @@ def _create_repository() -> ShiftRepository:
             schedule_id TEXT NOT NULL UNIQUE,
             schedule_name TEXT NOT NULL,
             last_used TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         )
         """
     )
@@ -132,3 +141,64 @@ def test_get_schedule_entries_returns_buchungsname_and_email() -> None:
     assert len(entries) == 1
     assert entries[0]["buchungsname"] == "Thomas Ruf"
     assert entries[0]["email"] == "thomas.ruf@example.com"
+
+
+def test_get_active_analyst_shift_counts_last_weeks_only_active() -> None:
+    repository = _create_repository()
+    in_window = (datetime.now(UTC) - timedelta(days=1)).replace(microsecond=0)
+    in_window_end = in_window + timedelta(hours=8)
+    out_window = (datetime.now(UTC) - timedelta(days=20)).replace(microsecond=0)
+    out_window_end = out_window + timedelta(hours=8)
+    repository._connection.execute(
+        """
+        INSERT INTO incident_analyst (
+            id, vornamen, nachname, buchungsname, email, opsgenie_id, start_datum, ende_datum
+        )
+        VALUES
+            (1, 'Max', 'Aktiv', 'Aktiv, Max', 'max.aktiv@example.com', NULL, '2025-01-01', NULL),
+            (2, 'Ina', 'Inaktiv', 'Inaktiv, Ina', 'ina.inaktiv@example.com', NULL, '2025-01-01', '2025-12-31')
+        """
+    )
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=1,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time=in_window.isoformat().replace("+00:00", "Z"),
+            p_end_time=in_window_end.isoformat().replace("+00:00", "Z"),
+        )
+    )
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=2,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time=in_window_end.isoformat().replace("+00:00", "Z"),
+            p_end_time=(in_window_end + timedelta(hours=8)).isoformat().replace("+00:00", "Z"),
+        )
+    )
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=1,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time=out_window.isoformat().replace("+00:00", "Z"),
+            p_end_time=out_window_end.isoformat().replace("+00:00", "Z"),
+        )
+    )
+
+    rows = repository.get_active_analyst_shift_counts_last_weeks(1)
+
+    assert len(rows) == 1
+    assert rows[0]["buchungsname"] == "Aktiv, Max"
+    assert rows[0]["shift_count"] == 1
+
+
+def test_settings_roundtrip() -> None:
+    repository = _create_repository()
+    assert repository.get_setting("last_shift_count_weeks") is None
+    repository.set_setting("last_shift_count_weeks", "6")
+    assert repository.get_setting("last_shift_count_weeks") == "6"

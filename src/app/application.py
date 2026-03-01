@@ -121,4 +121,25 @@ class Application:
     # Ref: UC-008 – Schichtplan anzeigen
     def get_schedule_entries(self, p_schedule_id: str) -> list[dict[str, str | int | None]]:
         return self._shift_repository.get_schedule_entries(p_schedule_id)
-        
+
+    # Ref: UC-009 – Aktive IA nach Schichtanzahl der letzten n Wochen
+    def get_active_analyst_shift_counts_last_weeks(
+        self,
+        p_weeks: int
+    ) -> list[dict[str, str | int]]:
+        return self._shift_repository.get_active_analyst_shift_counts_last_weeks(p_weeks)
+
+    # Ref: UC-009 – zuletzt verwendeten n-Wert persistieren
+    def get_last_shift_count_weeks(self) -> int:
+        value = self._shift_repository.get_setting("last_shift_count_weeks")
+        if value is None:
+            return 4
+        try:
+            parsed = int(value)
+            return parsed if parsed > 0 else 4
+        except ValueError:
+            return 4
+
+    # Ref: UC-009 – zuletzt verwendeten n-Wert persistieren
+    def set_last_shift_count_weeks(self, p_weeks: int) -> None:
+        self._shift_repository.set_setting("last_shift_count_weeks", str(int(p_weeks)))
