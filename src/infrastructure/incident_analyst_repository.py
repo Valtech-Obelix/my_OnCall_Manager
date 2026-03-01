@@ -26,10 +26,11 @@ class IncidentAnalystRepository:
                 buchungsname,
                 email,
                 opsgenie_id,
+                oncall_location_id,
                 start_datum,
                 ende_datum
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
                 p_analyst.vornamen,
@@ -37,6 +38,7 @@ class IncidentAnalystRepository:
                 p_analyst.buchungsname,
                 p_analyst.email,
                 p_analyst.opsgenie_id,
+                p_analyst.oncall_location_id,
                 p_analyst.start_datum.isoformat(),
                 p_analyst.ende_datum.isoformat()
                 if p_analyst.ende_datum
@@ -55,6 +57,7 @@ class IncidentAnalystRepository:
                                p_buchungsname= p_analyst.buchungsname,
                                p_email       = p_analyst.email,
                                p_opsgenie_id = p_analyst.opsgenie_id,
+                               p_oncall_location_id=p_analyst.oncall_location_id,
                                p_start_datum = p_analyst.start_datum, 
                                p_ende_datum  = p_analyst.ende_datum
         )
@@ -72,6 +75,7 @@ class IncidentAnalystRepository:
                 buchungsname,
                 email,
                 opsgenie_id,
+                oncall_location_id,
                 start_datum,
                 ende_datum
             FROM {TABLE_NAME}
@@ -92,8 +96,9 @@ class IncidentAnalystRepository:
                     p_buchungsname=row[3],
                     p_email=row[4],
                     p_opsgenie_id=row[5],
-                    p_start_datum=date.fromisoformat(row[6]),
-                    p_ende_datum=date.fromisoformat(row[7]) if row[7] else None
+                    p_oncall_location_id=row[6],
+                    p_start_datum=date.fromisoformat(row[7]),
+                    p_ende_datum=date.fromisoformat(row[8]) if row[8] else None
                 )
             )
 
@@ -143,6 +148,7 @@ class IncidentAnalystRepository:
                 buchungsname,
                 email,
                 opsgenie_id,
+                oncall_location_id,
                 start_datum,
                 ende_datum
             FROM incident_analyst
@@ -163,8 +169,9 @@ class IncidentAnalystRepository:
             p_buchungsname=row[3],
             p_email=row[4],
             p_opsgenie_id=row[5],
-            p_start_datum=date.fromisoformat(row[6]),
-            p_ende_datum=date.fromisoformat(row[7]) if row[7] else None
+            p_oncall_location_id=row[6],
+            p_start_datum=date.fromisoformat(row[7]),
+            p_ende_datum=date.fromisoformat(row[8]) if row[8] else None
         )
 
     # UC-004 / CR-008
@@ -178,6 +185,7 @@ class IncidentAnalystRepository:
                 buchungsname,
                 email,
                 opsgenie_id,
+                oncall_location_id,
                 start_datum,
                 ende_datum
             FROM incident_analyst
@@ -198,8 +206,9 @@ class IncidentAnalystRepository:
             p_buchungsname=row[3],
             p_email=row[4],
             p_opsgenie_id=row[5],
-            p_start_datum=date.fromisoformat(row[6]),
-            p_ende_datum=date.fromisoformat(row[7]) if row[7] else None
+            p_oncall_location_id=row[6],
+            p_start_datum=date.fromisoformat(row[7]),
+            p_ende_datum=date.fromisoformat(row[8]) if row[8] else None
         )
 
     def find_by_id(self, p_id: int) -> IncidentAnalyst | None:
@@ -212,6 +221,7 @@ class IncidentAnalystRepository:
                 buchungsname,
                 email,
                 opsgenie_id,
+                oncall_location_id,
                 start_datum,
                 ende_datum
             FROM {TABLE_NAME}
@@ -229,8 +239,9 @@ class IncidentAnalystRepository:
             p_buchungsname=row[3],
             p_email=row[4],
             p_opsgenie_id=row[5],
-            p_start_datum=date.fromisoformat(row[6]),
-            p_ende_datum=date.fromisoformat(row[7]) if row[7] else None
+            p_oncall_location_id=row[6],
+            p_start_datum=date.fromisoformat(row[7]),
+            p_ende_datum=date.fromisoformat(row[8]) if row[8] else None
         )
 
     def update(self, p_analyst: IncidentAnalyst) -> IncidentAnalyst:
@@ -243,6 +254,7 @@ class IncidentAnalystRepository:
                 buchungsname = ?,
                 email = ?,
                 opsgenie_id = ?,
+                oncall_location_id = ?,
                 start_datum = ?,
                 ende_datum = ?
             WHERE id = ?
@@ -253,6 +265,7 @@ class IncidentAnalystRepository:
                 p_analyst.buchungsname,
                 p_analyst.email,
                 p_analyst.opsgenie_id,
+                p_analyst.oncall_location_id,
                 p_analyst.start_datum.isoformat(),
                 p_analyst.ende_datum.isoformat()
                 if p_analyst.ende_datum

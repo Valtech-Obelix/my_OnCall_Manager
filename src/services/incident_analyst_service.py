@@ -17,6 +17,7 @@ class IncidentAnalystService:
                , p_email
                , p_start_datum
                , p_ende_datum=None
+               , p_oncall_location_id: str = "GER"
               ) -> IncidentAnalyst:
         self._logger.debug(  "Input data: %s %s %s %s %s"
                            , p_vornamen
@@ -33,6 +34,7 @@ class IncidentAnalystService:
                                   , p_email       = p_email
                                   , p_start_datum = p_start_datum
                                   , p_ende_datum  = p_ende_datum
+                                  , p_oncall_location_id=p_oncall_location_id
                                  )
             result  = self._repository.add(analyst)
             self._logger.info(  "Creating IncidentAnalyst: %s, %s"
@@ -84,7 +86,8 @@ class IncidentAnalystService:
         p_email: str,
         p_start_datum: date,
         p_ende_datum: date | None = None,
-        p_opsgenie_id: str | None = None
+        p_opsgenie_id: str | None = None,
+        p_oncall_location_id: str = "GER"
     ) -> IncidentAnalyst:
 
         current = self._repository.find_by_id(p_id)
@@ -98,7 +101,8 @@ class IncidentAnalystService:
             p_email=p_email,
             p_start_datum=p_start_datum,
             p_ende_datum=p_ende_datum,
-            p_opsgenie_id=p_opsgenie_id
+            p_opsgenie_id=p_opsgenie_id,
+            p_oncall_location_id=p_oncall_location_id
         )
         return self._repository.update(updated)
 

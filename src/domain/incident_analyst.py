@@ -26,7 +26,8 @@ class IncidentAnalyst:
         p_start_datum                                 : date,
         p_ende_datum                                  : date | None = None,
         p_buchungsname                                : str | None = None,
-        p_opsgenie_id                                 : str | None = None
+        p_opsgenie_id                                 : str | None = None,
+        p_oncall_location_id                          : str = "GER"
     ):
         # Ref: UC-001 v0.2 – neue Attribute
         self.id                                       = p_id
@@ -40,6 +41,7 @@ class IncidentAnalyst:
         self.opsgenie_id                              = (
             p_opsgenie_id.strip() if p_opsgenie_id else None
         )
+        self.oncall_location_id                       = p_oncall_location_id.strip().upper()
         self.start_datum                              = p_start_datum
         self.ende_datum                               = p_ende_datum
 
@@ -63,6 +65,9 @@ class IncidentAnalyst:
 
         if not self._is_valid_email():
             raise DomainException('Ungültiges Email-Format.')
+
+        if len(self.oncall_location_id) != 3:
+            raise DomainException('Rufbereitschaftsstandort muss genau 3 Zeichen haben.')
 
         if self.ende_datum and self.ende_datum < self.start_datum:
             raise DomainException('Enddatum darf nicht vor Startdatum liegen.')

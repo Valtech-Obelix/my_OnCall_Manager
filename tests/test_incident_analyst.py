@@ -27,3 +27,15 @@ def test_rejects_invalid_email() -> None:
             p_email="ungueltig",
             p_start_datum=date(2026, 1, 1),
         )
+
+
+def test_defaults_oncall_location_to_ger() -> None:
+    analyst = IncidentAnalyst(
+        p_id=None,
+        p_vornamen="Erika",
+        p_nachname="Muster",
+        p_email="erika@example.com",
+        p_start_datum=date(2026, 1, 1),
+    )
+
+    assert analyst.oncall_location_id == "GER"

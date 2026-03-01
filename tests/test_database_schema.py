@@ -43,12 +43,13 @@ def test_initialize_schema_adds_opsgenie_id_without_data_loss(tmp_path) -> None:
 
     row = migrated_connection.execute(
         """
-        SELECT vornamen, nachname, buchungsname, email, start_datum, ende_datum, opsgenie_id
+        SELECT vornamen, nachname, buchungsname, email, start_datum, ende_datum, opsgenie_id, oncall_location_id
         FROM incident_analyst
         """
     ).fetchone()
 
     assert "opsgenie_id" in column_names
+    assert "oncall_location_id" in column_names
     assert row == (
         "Erika",
         "Mustermann",
@@ -57,6 +58,7 @@ def test_initialize_schema_adds_opsgenie_id_without_data_loss(tmp_path) -> None:
         "2026-01-01",
         None,
         None,
+        "GER",
     )
 
     database.close()
@@ -96,5 +98,10 @@ def test_initialize_schema_creates_rufbereitschaftsstandort_table(tmp_path) -> N
     column_names = [row[1] for row in table_info]
 
     assert column_names == ["id", "name"]
+
+    ger = connection.execute(
+        "SELECT id, name FROM rufbereitschaftsstandort WHERE id = 'GER'"
+    ).fetchone()
+    assert ger == ("GER", "Deutschland")
 
     database.close()

@@ -3,6 +3,7 @@ from     datetime                                              import date
 from     PySide6.QtCore                                        import QDate, Qt
 from     PySide6.QtWidgets                                     import (
     QCheckBox,
+    QComboBox,
     QDateEdit,
     QDialog,
     QFormLayout,
@@ -44,6 +45,9 @@ class IncidentAnalystEditDialog(QDialog):
         self._nachname_input = QLineEdit()
         self._email_input = QLineEdit()
         self._opsgenie_id_input = QLineEdit()
+        self._oncall_location_input = QComboBox()
+        self._oncall_location_input.setEditable(False)
+        self._load_oncall_locations()
 
         self._start_input = QDateEdit()
         self._start_input.setCalendarPopup(True)
@@ -58,6 +62,7 @@ class IncidentAnalystEditDialog(QDialog):
         form_layout.addRow("Nachname  :", self._nachname_input)
         form_layout.addRow("E-Mail.   :", self._email_input)
         form_layout.addRow("OpsGenie ID:", self._opsgenie_id_input)
+        form_layout.addRow("Standort  :", self._oncall_location_input)
         form_layout.addRow("Startdatum:", self._start_input)
         form_layout.addRow("", self._end_enabled_checkbox)
         form_layout.addRow("Enddatum  :", self._end_input)
@@ -81,6 +86,11 @@ class IncidentAnalystEditDialog(QDialog):
         self._nachname_input.setText(self._analyst.nachname)
         self._email_input.setText(self._analyst.email)
         self._opsgenie_id_input.setText(self._analyst.opsgenie_id or "")
+        location_index = self._oncall_location_input.findText(self._analyst.oncall_location_id)
+        if location_index < 0:
+            self._oncall_location_input.addItem(self._analyst.oncall_location_id)
+            location_index = self._oncall_location_input.findText(self._analyst.oncall_location_id)
+        self._oncall_location_input.setCurrentIndex(location_index)
 
         self._start_input.setDate(
             QDate(
@@ -106,6 +116,14 @@ class IncidentAnalystEditDialog(QDialog):
     def _toggle_end_date_enabled(self, p_checked: bool):
         self._end_input.setEnabled(p_checked)
 
+    def _load_oncall_locations(self) -> None:
+        locations = self._application.get_oncall_locations()
+        if not locations:
+            self._oncall_location_input.addItem("GER")
+            return
+        for location in locations:
+            self._oncall_location_input.addItem(location["id"])
+
     def _handle_save(self):
         start_qdate = self._start_input.date()
         start_date = date(start_qdate.year(), start_qdate.month(), start_qdate.day())
@@ -126,6 +144,7 @@ class IncidentAnalystEditDialog(QDialog):
                 p_start_datum=start_date,
                 p_ende_datum=end_date,
                 p_opsgenie_id=opsgenie_id,
+                p_oncall_location_id=self._oncall_location_input.currentText(),
             )
         except DomainException as e:
             QMessageBox.warning(self, APP_TITLE, str(e))

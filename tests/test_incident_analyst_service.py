@@ -16,6 +16,7 @@ class _FakeRepository:
                 p_nachname="Muster",
                 p_email="max@example.com",
                 p_start_datum=date(2025, 1, 1),
+                p_oncall_location_id="GER",
             )
         }
 
@@ -39,6 +40,7 @@ class _FakeRepository:
             p_start_datum=analyst.start_datum,
             p_ende_datum=p_ende_datum,
             p_opsgenie_id=analyst.opsgenie_id,
+            p_oncall_location_id=analyst.oncall_location_id,
         )
 
 
@@ -54,12 +56,14 @@ def test_update_changes_incident_analyst_data() -> None:
         p_start_datum=date(2025, 2, 1),
         p_ende_datum=None,
         p_opsgenie_id="325b3fbf-cbb2-4724-abe1-4fb488655ede",
+        p_oncall_location_id="USA",
     )
 
     assert updated.vornamen == "Thomas"
     assert updated.nachname == "Ruf"
     assert updated.email == "thomas.ruf@example.com"
     assert updated.opsgenie_id == "325b3fbf-cbb2-4724-abe1-4fb488655ede"
+    assert updated.oncall_location_id == "USA"
     assert updated.start_datum == date(2025, 2, 1)
 
 

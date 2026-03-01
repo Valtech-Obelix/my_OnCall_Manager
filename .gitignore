@@ -232,3 +232,6 @@ src/sql/*.sql
 
 # lokale Debug Files
 debug/*.*
+
+# Buchungsdateien
+data/RB_202*.csv

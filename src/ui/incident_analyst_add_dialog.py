@@ -1,5 +1,4 @@
 from     PySide6.QtWidgets                                     import (  QDialog
-                                                                       , QLabel
                                                                        , QLineEdit
                                                                        , QPushButton
                                                                        , QVBoxLayout
@@ -7,6 +6,7 @@ from     PySide6.QtWidgets                                     import (  QDialog
                                                                        , QMessageBox
                                                                        , QFormLayout
                                                                        , QDateEdit
+                                                                       , QComboBox
                                                                       )
 from     PySide6.QtCore                                        import (  QDate
                                                                        , Qt
@@ -42,6 +42,9 @@ class IncidentAnalystAddDialog(QDialog):
         self._vorname_input = QLineEdit()
         self._nachname_input = QLineEdit()
         self._email_input = QLineEdit()
+        self._oncall_location_input = QComboBox()
+        self._oncall_location_input.setEditable(False)
+        self._load_oncall_locations()
 
         self._start_input = QDateEdit()
         self._start_input.setCalendarPopup(True)
@@ -50,6 +53,7 @@ class IncidentAnalystAddDialog(QDialog):
         form_layout.addRow("Vorname.  :", self._vorname_input)
         form_layout.addRow("Nachname  :", self._nachname_input)
         form_layout.addRow("E-Mail.   :", self._email_input)
+        form_layout.addRow("Standort  :", self._oncall_location_input)
         form_layout.addRow("Startdatum:", self._start_input)
 
         layout.addLayout(form_layout)
@@ -69,6 +73,17 @@ class IncidentAnalystAddDialog(QDialog):
 
         self._save_button.clicked.connect(self._handle_save)
         self._cancel_button.clicked.connect(self.reject)
+
+    def _load_oncall_locations(self) -> None:
+        locations = self._application.get_oncall_locations()
+        if not locations:
+            self._oncall_location_input.addItem("GER")
+            return
+        for location in locations:
+            self._oncall_location_input.addItem(location["id"])
+        default_index = self._oncall_location_input.findText("GER")
+        if default_index >= 0:
+            self._oncall_location_input.setCurrentIndex(default_index)
 
     def _handle_save(self):
 
@@ -92,7 +107,8 @@ class IncidentAnalystAddDialog(QDialog):
                 nachname,
                 email,
                 start_date,
-                end_date
+                end_date,
+                self._oncall_location_input.currentText()
             )
         except DomainException as e:
             QMessageBox.warning(self, APP_TITLE, str(e))
