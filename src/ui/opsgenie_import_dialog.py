@@ -5,6 +5,7 @@ from    PySide6.QtWidgets                                   import  (  QDialog
                                                                      , QLineEdit
                                                                      , QComboBox
                                                                      , QCheckBox
+                                                                     , QLabel
                                                                      , QPushButton
                                                                      , QMessageBox
                                                                     )
@@ -39,6 +40,11 @@ class OpsGenieImportDialog(QDialog):
         self._schedule_id_input = QLineEdit()
         self._schedule_id_input.setMinimumWidth(500)
         self._schedule_id_input.setPlaceholderText('Schedule ID eingeben')
+        self._schedule_id_input.textChanged.connect(
+            self._update_next_import_start_hint
+        )
+
+        self._next_import_start_label = QLabel('-')
 
         self._dump_json_checkbox = QCheckBox(
             'Vollständigen JSON-Dump des letzten Imports speichern'
@@ -48,6 +54,8 @@ class OpsGenieImportDialog(QDialog):
         form_layout = QFormLayout()
         form_layout.addRow('Name des Schichtplans:', self._schedule_name_combo)
         form_layout.addRow('Schedule ID:', self._schedule_id_input)
+        # Ref: CR-014 – Import-Startdatum im Dialog anzeigen.
+        form_layout.addRow('Nächster Import ab:', self._next_import_start_label)
         form_layout.addRow('', self._dump_json_checkbox)
 
         self._import_button = QPushButton('Schichten importieren')
@@ -93,9 +101,11 @@ class OpsGenieImportDialog(QDialog):
         else:
             self._schedule_name_combo.setCurrentIndex(0)
             self._schedule_id_input.clear()
+            self._update_next_import_start_hint()
 
     def _on_schedule_name_selected(self, p_index: int):
         if p_index <= 0:
+            self._update_next_import_start_hint()
             return
 
         entry = self._schedule_name_combo.itemData(p_index)
@@ -105,6 +115,7 @@ class OpsGenieImportDialog(QDialog):
         schedule_name = entry.get("schedule_name", "")
         self._schedule_name_combo.setEditText(schedule_name)
         self._schedule_id_input.setText(entry.get("schedule_id", ""))
+        self._update_next_import_start_hint()
 
     def _on_import_clicked(self):
 
@@ -147,6 +158,7 @@ class OpsGenieImportDialog(QDialog):
             self._load_history()
             self._schedule_name_combo.setEditText(schedule_name)
             self._schedule_id_input.setText(schedule_id)
+            self._update_next_import_start_hint()
 
         except OpsGenieAuthException:
             QMessageBox.critical(
@@ -182,3 +194,15 @@ class OpsGenieImportDialog(QDialog):
                 'Unexpected Error',
                 str(ex)
             )
+
+    def _update_next_import_start_hint(self):
+        schedule_id = self._schedule_id_input.text().strip()
+        if not schedule_id:
+            self._next_import_start_label.setText('-')
+            return
+
+        local_start = self._service.get_next_import_start_local(schedule_id)
+        if local_start:
+            self._next_import_start_label.setText(local_start)
+        else:
+            self._next_import_start_label.setText('-')

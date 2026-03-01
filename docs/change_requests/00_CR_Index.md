@@ -15,6 +15,7 @@
 | CR-011 | Default-Zeitraum: letzte 2 Wochen (Mo-So) bis Vortag | umgesetzt    | UC-008   | hoch      | 2026-02-28  | 2026-02-28   | [CR-011](./CR-011_Default_Zeitraum_Letzte_2_Wochen_bis_Vortag.md) |
 | CR-012 | Layout: Von/Bis und Checkbox in einer Zeile | umgesetzt    | UC-008   | mittel    | 2026-02-28  | 2026-02-28   | [CR-012](./CR-012_Layout_Von_Bis_und_Checkbox_in_einer_Zeile.md) |
 | CR-013 | Button „Anzeige aktualisieren“ mit Dirty-State | umgesetzt    | UC-008   | hoch      | 2026-02-28  | 2026-02-28   | [CR-013](./CR-013_Button_Anzeige_aktualisieren_mit_Dirty_State.md) |
+| CR-014 | Import-Dialog zeigt nächsten Importstart | umgesetzt    | UC-005   | mittel    | 2026-02-28  | 2026-02-28   | [CR-014](./CR-014_Importdialog_zeigt_naechsten_Importstart.md) |
 
 ## Statusdefinition
 

@@ -1,7 +1,7 @@
 # UC-005 – Auswahl Schichtplan
 
 ## Version
-0.2
+0.3
 
 ---
 
@@ -21,7 +21,8 @@ um ausschließlich fachlich relevante On-Call-Zeiträume der Incident-Analysten 
 3. Administrator wählt einen vorhandenen Schichtplan über den Namen des Schichtplans aus
    oder erfasst einen neuen Namen.
 4. System setzt bei Auswahl automatisch die zugehörige `Schedule ID`.
-5. Administrator startet den Import über „Schichten importieren“ oder beendet den Dialog über „Fertig“.
+5. System zeigt „Nächster Import ab“ für die aktuell gesetzte `Schedule ID`.
+6. Administrator startet den Import über „Schichten importieren“ oder beendet den Dialog über „Fertig“.
 
 ---
 
@@ -30,6 +31,7 @@ um ausschließlich fachlich relevante On-Call-Zeiträume der Incident-Analysten 
 - Feldbezeichnung lautet „Name des Schichtplans“.
 - Auswahl erfolgt primär über den Namen des Schichtplans.
 - Zu ausgewähltem Namen wird die passende `Schedule ID` vorbelegt.
+- Für die aktuelle `Schedule ID` wird der nächste Importstart angezeigt.
 - Letzter verwendeter Schichtplan ist beim Öffnen vorausgewählt.
 - Buttontexte lauten „Schichten importieren“ und „Fertig“.
 
@@ -40,3 +42,4 @@ um ausschließlich fachlich relevante On-Call-Zeiträume der Incident-Analysten 
 - [CR-003 – Import-Button umbenennen](../change_requests/CR-003_Buttontext_Schichten_importieren.md)
 - [CR-004 – Button „Fertig“ im Import-Dialog ergänzen](../change_requests/CR-004_Button_Fertig_im_Importdialog.md)
 - [CR-005 – Schichtplan-Referenzen unabhängig persistieren](../change_requests/CR-005_Unabhaengige_Persistenz_Schichtplanreferenzen.md)
+- [CR-014 – Import-Dialog zeigt nächsten Importstart](../change_requests/CR-014_Importdialog_zeigt_naechsten_Importstart.md)

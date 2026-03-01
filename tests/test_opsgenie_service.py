@@ -34,6 +34,7 @@ class _FakeShiftRepository:
     def __init__(self, p_max_end: str | None = None):
         self._max_end = p_max_end
         self.saved_references = []
+        self.saved_shifts = []
 
     def save_schedule_reference(self, p_schedule_id: str, p_schedule_name: str) -> None:
         self.saved_references.append((p_schedule_id, p_schedule_name))
@@ -42,6 +43,7 @@ class _FakeShiftRepository:
         return []
 
     def save(self, p_shift):
+        self.saved_shifts.append(p_shift)
         return True
 
     def get_schedule_time_bounds(self, p_schedule_id: str):
@@ -156,9 +158,9 @@ def test_import_before_01_00_uses_yesterday_minus_one_day_as_last_complete_day()
     interval_unit = client.calls[0]["interval_unit"]
     assert since == datetime(2026, 2, 15, 16, 0, 1)
     assert until == datetime(2026, 2, 28, 0, 0, 0)
-    assert date_anchor == datetime(2026, 2, 15, 16, 0, 1)
-    assert interval == 12
-    assert interval_unit == "months"
+    assert date_anchor == since
+    assert interval == 13
+    assert interval_unit == "days"
 
 
 def test_import_after_01_00_uses_previous_day_as_last_complete_day() -> None:
@@ -185,9 +187,9 @@ def test_import_after_01_00_uses_previous_day_as_last_complete_day() -> None:
     interval_unit = client.calls[0]["interval_unit"]
     assert since == datetime(2026, 2, 28, 16, 0, 1)
     assert until == datetime(2026, 3, 1, 0, 0, 0)
-    assert date_anchor == datetime(2026, 2, 28, 16, 0, 1)
-    assert interval == 12
-    assert interval_unit == "months"
+    assert date_anchor == since
+    assert interval == 1
+    assert interval_unit == "days"
 
 
 def test_import_without_existing_shifts_starts_at_january_first() -> None:
@@ -203,8 +205,36 @@ def test_import_without_existing_shifts_starts_at_january_first() -> None:
 
     service.import_schedule("schedule-1", "Schichtplan A")
 
-    assert len(client.calls) == 1
+    assert len(client.calls) >= 1
     assert client.calls[0]["since"] == datetime(2026, 1, 1, 0, 0, 0)
+
+
+def test_get_next_import_start_local_uses_existing_max_end_plus_one_second() -> None:
+    service = _FixedNowOpsGenieService(
+        p_now_local=datetime(2026, 3, 1, 1, 5, 0, tzinfo=BERLIN),
+        p_client=_FakeClient(),
+        p_shift_repository=_FakeShiftRepository(
+            p_max_end="2026-02-28T16:00:00Z"
+        ),
+        p_analyst_repository=_FakeAnalystRepository(),
+        p_logger=_FakeLogger(),
+    )
+
+    value = service.get_next_import_start_local("schedule-1")
+
+    assert value == "28.02.2026 17:00:01 (CET)"
+
+
+def test_get_next_import_start_local_returns_none_for_missing_schedule_id() -> None:
+    service = _FixedNowOpsGenieService(
+        p_now_local=datetime(2026, 3, 1, 1, 5, 0, tzinfo=BERLIN),
+        p_client=_FakeClient(),
+        p_shift_repository=_FakeShiftRepository(),
+        p_analyst_repository=_FakeAnalystRepository(),
+        p_logger=_FakeLogger(),
+    )
+
+    assert service.get_next_import_start_local("") is None
 
 
 def test_skipped_entries_log_reason_and_json_snippet() -> None:
@@ -381,3 +411,107 @@ def test_precheck_does_not_override_conflicting_opsgenie_id() -> None:
 
     assert analysts.updated_opsgenie_ids == []
     assert result.skipped == 1
+
+
+def test_fragmented_periods_are_merged_into_single_shift_per_slot() -> None:
+    timeline = {
+        "data": {
+            "finalTimeline": {
+                "rotations": [
+                    {
+                        "id": "rotation-1",
+                        "name": "Primary",
+                        "periods": [
+                            {
+                                "startDate": "2026-01-31T16:00:00Z",
+                                "endDate": "2026-01-31T23:00:00Z",
+                                "recipient": {
+                                    "id": "user-1",
+                                    "type": "user",
+                                    "name": "sneha.jubin@valtech.com",
+                                },
+                            },
+                            {
+                                "startDate": "2026-01-31T23:00:00Z",
+                                "endDate": "2026-02-01T00:00:00Z",
+                                "recipient": {
+                                    "id": "user-1",
+                                    "type": "user",
+                                    "name": "sneha.jubin@valtech.com",
+                                },
+                            },
+                        ],
+                    }
+                ]
+            }
+        }
+    }
+    client = _FakeTimelineClient(timeline)
+    analysts = _FakeAnalystRepository()
+    analysts.by_opsgenie_id["user-1"] = _SimpleAnalyst(
+        p_id=29,
+        p_email="sneha.jubin@valtech.com",
+        p_buchungsname="Jubin, Sneha",
+        p_opsgenie_id="user-1",
+    )
+    shift_repository = _FakeShiftRepository()
+    service = OpsGenieService(
+        p_client=client,
+        p_shift_repository=shift_repository,
+        p_analyst_repository=analysts,
+        p_logger=_FakeLogger(),
+    )
+
+    result = service.import_schedule("schedule-1", "Schichtplan A")
+
+    assert result.imported == 1
+    assert len(shift_repository.saved_shifts) == 1
+    assert shift_repository.saved_shifts[0].start_time == "2026-01-31T16:00:00Z"
+    assert shift_repository.saved_shifts[0].end_time == "2026-02-01T00:00:00Z"
+
+
+def test_periods_outside_chunk_window_are_not_saved() -> None:
+    timeline = {
+        "data": {
+            "finalTimeline": {
+                "rotations": [
+                    {
+                        "id": "rotation-1",
+                        "name": "Primary",
+                        "periods": [
+                            {
+                                "startDate": "2026-03-01T00:00:00Z",
+                                "endDate": "2026-03-01T08:00:00Z",
+                                "recipient": {
+                                    "id": "user-1",
+                                    "type": "user",
+                                    "name": "sneha.jubin@valtech.com",
+                                },
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
+    }
+    client = _FakeTimelineClient(timeline)
+    analysts = _FakeAnalystRepository()
+    analysts.by_opsgenie_id["user-1"] = _SimpleAnalyst(
+        p_id=29,
+        p_email="sneha.jubin@valtech.com",
+        p_buchungsname="Jubin, Sneha",
+        p_opsgenie_id="user-1",
+    )
+    shift_repository = _FakeShiftRepository(p_max_end="2026-02-28T16:00:00Z")
+    service = _FixedNowOpsGenieService(
+        p_now_local=datetime(2026, 3, 1, 1, 5, 0, tzinfo=BERLIN),
+        p_client=client,
+        p_shift_repository=shift_repository,
+        p_analyst_repository=analysts,
+        p_logger=_FakeLogger(),
+    )
+
+    result = service.import_schedule("schedule-1", "Schichtplan A")
+
+    assert result.imported == 0
+    assert len(shift_repository.saved_shifts) == 0

@@ -1,6 +1,7 @@
 import  json
 from    pathlib                                             import Path
 from    datetime                                            import datetime, timedelta
+from    math                                                import ceil
 from    src.domain.import_result                            import  ImportResult
 from    src.domain.shift                                    import  Shift
 from    src.infrastructure.timezone_utils                   import  (
@@ -17,6 +18,7 @@ from    src.domain.exceptions                               import  (  OpsGenieA
 
 class OpsGenieService:
     SHIFT_BOUNDARY_HOUR = 1
+    IMPORT_CHUNK_DAYS = 14
 
     def __init__(
         self,
@@ -49,119 +51,244 @@ class OpsGenieService:
             p_schedule_name=p_schedule_name
         )
 
-        since, until, date_anchor, interval, interval_unit = self._get_import_window(
+        since, until, _, _, _ = self._get_import_window(
             p_schedule_id
         )
 
-        try:
-            timeline = self._client.get_schedule_timeline(
-                p_schedule_id=p_schedule_id,
-                p_since=since,
-                p_until=until,
-                p_date=date_anchor,
-                p_interval=interval,
-                p_interval_unit=interval_unit
+        if since is None or until is None:
+            return ImportResult(
+                p_imported=imported,
+                p_skipped=skipped,
+                p_errors=errors
             )
-            if p_dump_full_json:
-                self._write_last_import_json_dump(timeline)
 
-        except (
-            OpsGenieAuthException,
-            OpsGenieNotFoundException,
-            OpsGenieConnectionException,
-            OpsGenieApiException
-        ) as ex:
-            self._logger.error(f'OpsGenie API error: {ex}')
-            raise
+        if since >= until:
+            self._logger.warning(
+                "Importfenster leer für Schedule %s: since=%s until=%s",
+                p_schedule_id,
+                since.isoformat() + "Z",
+                until.isoformat() + "Z"
+            )
+            return ImportResult(
+                p_imported=imported,
+                p_skipped=skipped,
+                p_errors=errors
+            )
 
-        rotations = (
-            timeline.get('data', {})
-                    .get('finalTimeline', {})
-                    .get('rotations', [])
+        chunk_windows = list(self._iter_import_windows(since, until))
+        self._logger.info(
+            "Import in %s Zeitfenster(n) für Schedule %s",
+            len(chunk_windows),
+            p_schedule_id
         )
 
-        self._enrich_opsgenie_ids_from_timeline(rotations)
+        for chunk_since, chunk_until in chunk_windows:
+            chunk_days = max(
+                1,
+                ceil((chunk_until - chunk_since).total_seconds() / 86400)
+            )
+            try:
+                timeline = self._client.get_schedule_timeline(
+                    p_schedule_id=p_schedule_id,
+                    p_since=chunk_since,
+                    p_until=chunk_until,
+                    p_date=chunk_since,
+                    p_interval=chunk_days,
+                    p_interval_unit="days"
+                )
+                if p_dump_full_json:
+                    self._write_last_import_json_dump(timeline)
 
-        for rotation in rotations:
-            periods = rotation.get('periods', [])
+            except (
+                OpsGenieAuthException,
+                OpsGenieNotFoundException,
+                OpsGenieConnectionException,
+                OpsGenieApiException
+            ) as ex:
+                self._logger.error(f'OpsGenie API error: {ex}')
+                raise
 
-            for period in periods:
+            rotations = (
+                timeline.get('data', {})
+                        .get('finalTimeline', {})
+                        .get('rotations', [])
+            )
+            period_count = sum(len(r.get("periods", [])) for r in rotations)
+            self._logger.info(
+                "Chunk import Schedule %s: since=%s until=%s interval=%s days -> periods=%s",
+                p_schedule_id,
+                chunk_since.isoformat() + "Z",
+                chunk_until.isoformat() + "Z",
+                chunk_days,
+                period_count
+            )
 
-                try:
-                    recipient = period.get('recipient')
+            self._enrich_opsgenie_ids_from_timeline(rotations)
 
-                    if not recipient:
-                        self._log_skipped_period(
-                            p_reason='missing recipient',
-                            p_rotation=rotation,
-                            p_period=period
-                        )
-                        skipped += 1
+            for rotation in rotations:
+                periods = self._merge_fragmented_periods(rotation.get('periods', []))
+
+                for period in periods:
+                    if not self._period_start_in_window(period, chunk_since, chunk_until):
                         continue
 
-                    if recipient.get('type') != 'user':
-                        self._log_skipped_period(
-                            p_reason='recipient is not a user',
-                            p_rotation=rotation,
-                            p_period=period
+                    try:
+                        recipient = period.get('recipient')
+
+                        if not recipient:
+                            self._log_skipped_period(
+                                p_reason='missing recipient',
+                                p_rotation=rotation,
+                                p_period=period
+                            )
+                            skipped += 1
+                            continue
+
+                        if recipient.get('type') != 'user':
+                            self._log_skipped_period(
+                                p_reason='recipient is not a user',
+                                p_rotation=rotation,
+                                p_period=period
+                            )
+                            skipped += 1
+                            continue
+
+                        recipient_id = recipient.get('id')
+
+                        if not recipient_id:
+                            self._log_skipped_period(
+                                p_reason='missing recipient opsgenie_id',
+                                p_rotation=rotation,
+                                p_period=period
+                            )
+                            skipped += 1
+                            continue
+
+                        analyst = self._analyst_repository.find_by_opsgenie_id(
+                            recipient_id
                         )
-                        skipped += 1
-                        continue
 
-                    recipient_id = recipient.get('id')
+                        if not analyst:
+                            self._log_skipped_period(
+                                p_reason=f'no analyst found for opsgenie_id: {recipient_id}',
+                                p_rotation=rotation,
+                                p_period=period
+                            )
+                            skipped += 1
+                            continue
 
-                    if not recipient_id:
-                        self._log_skipped_period(
-                            p_reason='missing recipient opsgenie_id',
-                            p_rotation=rotation,
-                            p_period=period
+                        shift = Shift(
+                            p_id=None,
+                            p_analyst_id=analyst.id,
+                            p_project=p_schedule_name,
+                            p_schedule_id=p_schedule_id,
+                            p_start_time=period.get('startDate'),
+                            p_end_time=period.get('endDate')
                         )
-                        skipped += 1
-                        continue
 
-                    analyst = self._analyst_repository.find_by_opsgenie_id(
-                        recipient_id
-                    )
+                        saved = self._shift_repository.save(shift)
 
-                    if not analyst:
-                        self._log_skipped_period(
-                            p_reason=f'no analyst found for opsgenie_id: {recipient_id}',
-                            p_rotation=rotation,
-                            p_period=period
-                        )
-                        skipped += 1
-                        continue
+                        if saved:
+                            imported += 1
+                        else:
+                            self._log_skipped_period(
+                                p_reason='duplicate shift (already exists)',
+                                p_rotation=rotation,
+                                p_period=period
+                            )
+                            skipped += 1
 
-                    shift = Shift(
-                        p_id=None,
-                        p_analyst_id=analyst.id,
-                        p_project=p_schedule_name,
-                        p_schedule_id=p_schedule_id,
-                        p_start_time=period.get('startDate'),
-                        p_end_time=period.get('endDate')
-                    )
-
-                    saved = self._shift_repository.save(shift)
-
-                    if saved:
-                        imported += 1
-                    else:
-                        self._log_skipped_period(
-                            p_reason='duplicate shift (already exists)',
-                            p_rotation=rotation,
-                            p_period=period
-                        )
-                        skipped += 1
-
-                except Exception as ex:
-                    self._logger.error(f'Shift processing failed: {ex}')
-                    errors += 1
+                    except Exception as ex:
+                        self._logger.error(f'Shift processing failed: {ex}')
+                        errors += 1
 
         return ImportResult(
             p_imported=imported,
             p_skipped=skipped,
             p_errors=errors
         )
+
+    def _iter_import_windows(
+        self,
+        p_since: datetime,
+        p_until: datetime
+    ):
+        cursor = p_since
+        chunk_size = timedelta(days=self.IMPORT_CHUNK_DAYS)
+
+        while cursor < p_until:
+            chunk_until = min(cursor + chunk_size, p_until)
+            yield cursor, chunk_until
+            cursor = chunk_until
+
+    def _merge_fragmented_periods(self, p_periods: list[dict]) -> list[dict]:
+        merged: list[dict] = []
+        by_key: dict[tuple[str, str, int], dict] = {}
+
+        for period in p_periods:
+            key = self._period_merge_key(period)
+            if key is None:
+                merged.append(period)
+                continue
+
+            current = by_key.get(key)
+            if current is None:
+                clone = dict(period)
+                by_key[key] = clone
+                merged.append(clone)
+                continue
+
+            current_start = parse_utc_timestamp(str(current.get("startDate")))
+            current_end = parse_utc_timestamp(str(current.get("endDate")))
+            period_start = parse_utc_timestamp(str(period.get("startDate")))
+            period_end = parse_utc_timestamp(str(period.get("endDate")))
+
+            if period_start < current_start:
+                current["startDate"] = period.get("startDate")
+            if period_end > current_end:
+                current["endDate"] = period.get("endDate")
+
+        return merged
+
+    def _period_merge_key(self, p_period: dict) -> tuple[str, str, int] | None:
+        recipient = p_period.get("recipient") or {}
+        if recipient.get("type") != "user":
+            return None
+
+        recipient_id = (recipient.get("id") or "").strip().lower()
+        start_date = p_period.get("startDate")
+        end_date = p_period.get("endDate")
+        if not recipient_id or not start_date or not end_date:
+            return None
+
+        start_local = parse_utc_timestamp(str(start_date)).astimezone(BERLIN)
+        if start_local.hour < self.SHIFT_BOUNDARY_HOUR:
+            display_day = start_local.date() - timedelta(days=1)
+        else:
+            display_day = start_local.date()
+
+        shifted_hour = (start_local.hour - self.SHIFT_BOUNDARY_HOUR) % 24
+        if shifted_hour < 8:
+            slot_index = 0
+        elif shifted_hour < 16:
+            slot_index = 1
+        else:
+            slot_index = 2
+
+        return recipient_id, display_day.isoformat(), slot_index
+
+    def _period_start_in_window(
+        self,
+        p_period: dict,
+        p_since: datetime,
+        p_until: datetime
+    ) -> bool:
+        start_date = p_period.get("startDate")
+        if not start_date:
+            return False
+
+        start_utc = parse_utc_timestamp(str(start_date)).astimezone(UTC).replace(tzinfo=None)
+        return p_since <= start_utc < p_until
 
     def _enrich_opsgenie_ids_from_timeline(self, p_rotations: list[dict]) -> None:
         seen_pairs: set[tuple[str, str]] = set()
@@ -255,6 +382,15 @@ class OpsGenieService:
     def get_schedule_references(self) -> list[dict[str, str]]:
         return self._shift_repository.get_schedule_references()
 
+    def get_next_import_start_local(self, p_schedule_id: str) -> str | None:
+        schedule_id = (p_schedule_id or "").strip()
+        if not schedule_id:
+            return None
+        since, _, _, _, _ = self._get_import_window(schedule_id)
+        if since is None:
+            return None
+        return format_utc_as_berlin(since.isoformat() + "Z")
+
     def _write_last_import_json_dump(self, p_timeline: dict) -> None:
         self._last_import_dump_file.parent.mkdir(parents=True, exist_ok=True)
         self._last_import_dump_file.write_text(
@@ -311,17 +447,14 @@ class OpsGenieService:
             tzinfo=BERLIN
         ) + timedelta(days=1)
         until = until_local.astimezone(UTC).replace(tzinfo=None)
-        date_anchor = since
-        interval = 12
-        interval_unit = "months"
+        date_anchor = None
+        interval = None
+        interval_unit = None
         self._logger.info(
-            "Importfenster für Schedule %s: since=%s until=%s date=%s interval=%s %s (letzter vollständiger Schichttag local=%s, max_end=%s)",
+            "Importfenster für Schedule %s: since=%s until=%s (letzter vollständiger Schichttag local=%s, max_end=%s)",
             p_schedule_id,
             since.isoformat() + "Z",
             until.isoformat() + "Z",
-            date_anchor.isoformat() + "Z",
-            interval,
-            interval_unit,
             last_complete_day_local.isoformat(),
             max_end
         )
