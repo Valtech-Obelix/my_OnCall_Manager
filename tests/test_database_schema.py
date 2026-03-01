@@ -60,3 +60,41 @@ def test_initialize_schema_adds_opsgenie_id_without_data_loss(tmp_path) -> None:
     )
 
     database.close()
+
+
+def test_initialize_schema_creates_entlohnungsklasse_table(tmp_path) -> None:
+    db_path = tmp_path / "entlohnungsklasse_schema.db"
+    database = Database(p_db_path=db_path)
+    database.initialize_schema()
+    connection = database.get_connection()
+
+    table_info = connection.execute(
+        "PRAGMA table_info(entlohnungsklasse)"
+    ).fetchall()
+    column_names = [row[1] for row in table_info]
+
+    assert column_names == [
+        "id",
+        "typ",
+        "beschreibung",
+        "auszahlungsbetrag",
+        "buchungstask_name",
+    ]
+
+    database.close()
+
+
+def test_initialize_schema_creates_rufbereitschaftsstandort_table(tmp_path) -> None:
+    db_path = tmp_path / "rufbereitschaftsstandort_schema.db"
+    database = Database(p_db_path=db_path)
+    database.initialize_schema()
+    connection = database.get_connection()
+
+    table_info = connection.execute(
+        "PRAGMA table_info(rufbereitschaftsstandort)"
+    ).fetchall()
+    column_names = [row[1] for row in table_info]
+
+    assert column_names == ["id", "name"]
+
+    database.close()

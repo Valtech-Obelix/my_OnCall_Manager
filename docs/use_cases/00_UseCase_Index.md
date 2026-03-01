@@ -11,6 +11,8 @@
 | UC-007 | IA bearbeiten                        | abgeschlossen | 0.1     |
 | UC-008 | Schichtplan anzeigen                 | abgeschlossen | 0.1     |
 | UC-009 | Aktive IA nach Schichtanzahl anzeigen | abgeschlossen | 0.1     |
+| UC-010 | Entlohnungsklassen verwalten         | abgeschlossen | 0.1     |
+| UC-011 | Rufbereitschaftsstandorte anzeigen und erfassen | abgeschlossen | 0.1     |
 
 ## Verknüpfte Änderungshistorie
 

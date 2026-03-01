@@ -13,6 +13,7 @@ from    src.domain.incident_analyst                         import  IncidentAnal
 from    src.infrastructure.shift_repository                 import  ShiftRepository
 from    src.services.opsgenie_service                       import  OpsGenieService
 from    src.infrastructure.opsgenie_client                  import  OpsGenieClient
+from    src.infrastructure.oncall_location_repository       import  OnCallLocationRepository
 
 class Application:
 
@@ -43,6 +44,9 @@ class Application:
 
         self._analyst_repository = IncidentAnalystRepository(self._database.get_connection())
         self._incident_analyst_service = IncidentAnalystService(self._analyst_repository)
+        self._oncall_location_repository = OnCallLocationRepository(
+            self._database.get_connection()
+        )
 
         # Ref: UC-004 – vollständige Verdrahtung
         self._shift_repository = ShiftRepository(self._database.get_connection())
@@ -143,3 +147,32 @@ class Application:
     # Ref: UC-009 – zuletzt verwendeten n-Wert persistieren
     def set_last_shift_count_weeks(self, p_weeks: int) -> None:
         self._shift_repository.set_setting("last_shift_count_weeks", str(int(p_weeks)))
+
+    # Ref: UC-011 – Rufbereitschaftsstandorte
+    def get_oncall_locations(self) -> list[dict[str, str]]:
+        return self._oncall_location_repository.get_all()
+
+    # Ref: UC-011 – Rufbereitschaftsstandorte
+    def save_oncall_location(
+        self,
+        p_original_id: str | None,
+        p_id: str,
+        p_name: str
+    ) -> None:
+        if p_original_id:
+            self._oncall_location_repository.update(
+                p_original_id=p_original_id,
+                p_new_id=p_id,
+                p_name=p_name
+            )
+            return
+
+        self._oncall_location_repository.add(p_id=p_id, p_name=p_name)
+
+    # Ref: UC-011 – Rufbereitschaftsstandorte
+    def oncall_location_exists(self, p_id: str) -> bool:
+        return self._oncall_location_repository.exists(p_id)
+
+    # Ref: UC-011 – Rufbereitschaftsstandorte
+    def delete_oncall_location(self, p_id: str) -> None:
+        self._oncall_location_repository.delete(p_id)

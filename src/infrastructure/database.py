@@ -81,6 +81,29 @@ class Database:
             '''
         )
 
+        # Ref: UC-010 v0.1 – Entlohnungsklassen speichern (Schritt 1)
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS entlohnungsklasse (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                typ TEXT NOT NULL,
+                beschreibung TEXT NOT NULL,
+                auszahlungsbetrag REAL NOT NULL CHECK (auszahlungsbetrag >= 0),
+                buchungstask_name TEXT NOT NULL
+            )
+            '''
+        )
+
+        # Ref: UC-011 v0.1 – Rufbereitschaftsstandorte
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS rufbereitschaftsstandort (
+                id TEXT PRIMARY KEY CHECK (length(id) = 3),
+                name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 30)
+            )
+            '''
+        )
+
         # Legacy cleanup: import_history wird nicht mehr verwendet.
         cursor.execute("DROP TABLE IF EXISTS import_history")
 

@@ -10,6 +10,7 @@ from    src.ui.incident_analyst_dialog                      import  IncidentAnal
 from    src.ui.opsgenie_import_dialog                       import  OpsGenieImportDialog
 from    src.ui.shift_plan_view_dialog                       import  ShiftPlanViewDialog
 from    src.ui.incident_analyst_shift_count_dialog          import  IncidentAnalystShiftCountDialog
+from    src.ui.oncall_location_dialog                       import  OnCallLocationDialog
 
 
 APP_TITLE                               =   'my_OnCall_Manager'
@@ -17,6 +18,7 @@ BUTTON_MANAGE_ANALYSTS                  =   'Incident Analysten verwalten'
 BUTTON_IMPORT_SHIFTS                    =   'OpsGenie Schichten importieren'
 BUTTON_VIEW_SHIFT_PLAN                  =   'Schichtplan anzeigen'
 BUTTON_VIEW_IA_SHIFT_COUNTS             =   'Aktive IA Schichtanzahl anzeigen'
+BUTTON_VIEW_ONCALL_LOCATIONS            =   'Rufbereitschaftsstandorte'
 
 
 class MainWindow(QMainWindow):
@@ -58,6 +60,12 @@ class MainWindow(QMainWindow):
         )
         layout.addWidget(self._view_ia_shift_counts_button)
 
+        self._view_oncall_locations_button = QPushButton(BUTTON_VIEW_ONCALL_LOCATIONS)
+        self._view_oncall_locations_button.clicked.connect(
+            self._open_oncall_location_dialog
+        )
+        layout.addWidget(self._view_oncall_locations_button)
+
         layout.addStretch()
 
         central_widget.setLayout(layout)
@@ -83,4 +91,8 @@ class MainWindow(QMainWindow):
 
     def _open_incident_analyst_shift_count_dialog(self):
         dialog = IncidentAnalystShiftCountDialog(self._application, self)
+        dialog.exec()
+
+    def _open_oncall_location_dialog(self):
+        dialog = OnCallLocationDialog(self._application, self)
         dialog.exec()
