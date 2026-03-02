@@ -1,0 +1,89 @@
+from datetime import date, timedelta
+
+from src.domain.exceptions import DomainException
+from src.infrastructure.timezone_utils import BERLIN, parse_utc_timestamp
+
+
+SHIFT_BOUNDARY_HOUR = 1
+
+
+class CompensationService:
+    def determine_shift_slot(self, p_start_time_utc: str) -> str:
+        start_local = parse_utc_timestamp(p_start_time_utc).astimezone(BERLIN)
+        shifted_hour = (start_local.hour - SHIFT_BOUNDARY_HOUR) % 24
+        if shifted_hour < 8:
+            return "F"
+        if shifted_hour < 16:
+            return "T"
+        return "S"
+
+    def determine_day_type(self, p_day: date) -> str:
+        if p_day.weekday() == 5:
+            return "SATURDAY"
+        if p_day.weekday() == 6 or self._is_bavaria_holiday(p_day):
+            return "SUNDAY_OR_HOLIDAY"
+        return "WEEKDAY"
+
+    def calculate_shift_compensation(
+        self,
+        p_oncall_location_id: str,
+        p_start_time_utc: str,
+    ) -> int:
+        start_local = parse_utc_timestamp(p_start_time_utc).astimezone(BERLIN)
+        slot = self.determine_shift_slot(p_start_time_utc)
+        day_type = self.determine_day_type(start_local.date())
+        location_id = p_oncall_location_id.strip().upper()
+
+        if location_id == "GER":
+            if day_type == "WEEKDAY":
+                if slot in ("F", "S"):
+                    return 125
+                return 0
+            if day_type == "SATURDAY":
+                return 150
+            return 180
+
+        if location_id == "IND":
+            if day_type == "WEEKDAY":
+                return 6
+            return 10
+
+        raise DomainException(f"Unbekannter Rufbereitschaftsstandort: {location_id}")
+
+    def _is_bavaria_holiday(self, p_day: date) -> bool:
+        easter = self._easter_sunday(p_day.year)
+        movable = {
+            easter - timedelta(days=2),   # Karfreitag
+            easter + timedelta(days=1),   # Ostermontag
+            easter + timedelta(days=39),  # Christi Himmelfahrt
+            easter + timedelta(days=50),  # Pfingstmontag
+            easter + timedelta(days=60),  # Fronleichnam
+        }
+        fixed = {
+            date(p_day.year, 1, 1),    # Neujahr
+            date(p_day.year, 1, 6),    # Heilige Drei Koenige
+            date(p_day.year, 5, 1),    # Tag der Arbeit
+            date(p_day.year, 10, 3),   # Tag der Deutschen Einheit
+            date(p_day.year, 11, 1),   # Allerheiligen
+            date(p_day.year, 12, 25),  # Weihnachten
+            date(p_day.year, 12, 26),  # Weihnachten
+        }
+        return p_day in fixed or p_day in movable
+
+    def _easter_sunday(self, p_year: int) -> date:
+        # Gauß/Oudin-Algorithmus (Gregorianischer Kalender)
+        a = p_year % 19
+        b = p_year // 100
+        c = p_year % 100
+        d = b // 4
+        e = b % 4
+        f = (b + 8) // 25
+        g = (b - f + 1) // 3
+        h = (19 * a + b - d - g + 15) % 30
+        i = c // 4
+        k = c % 4
+        l = (32 + 2 * e + 2 * i - h - k) % 7
+        m = (a + 11 * h + 22 * l) // 451
+        month = (h + l - 7 * m + 114) // 31
+        day = ((h + l - 7 * m + 114) % 31) + 1
+        return date(p_year, month, day)
