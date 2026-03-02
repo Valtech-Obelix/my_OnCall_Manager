@@ -12,6 +12,7 @@ from    src.infrastructure.logging_config                   import  setup_loggin
 from    src.domain.incident_analyst                         import  IncidentAnalyst
 from    src.infrastructure.shift_repository                 import  ShiftRepository
 from    src.services.opsgenie_service                       import  OpsGenieService
+from    src.services.compensation_service                   import  CompensationService
 from    src.infrastructure.opsgenie_client                  import  OpsGenieClient
 from    src.infrastructure.oncall_location_repository       import  OnCallLocationRepository
 from    src.infrastructure.secret_loader                    import  load_opsgenie_api_key
@@ -53,6 +54,7 @@ class Application:
 
         # Ref: UC-004 – vollständige Verdrahtung
         self._shift_repository = ShiftRepository(self._database.get_connection())
+        self._compensation_service = CompensationService()
         if self._opsgenie_client is not None:
             self._opsgenie_service = OpsGenieService    (  p_client=self._opsgenie_client
                                                          , p_shift_repository=self._shift_repository
@@ -148,6 +150,16 @@ class Application:
         p_weeks: int
     ) -> dict[str, list[dict[str, str | int | dict[str, int]]]]:
         return self._shift_repository.get_location_shift_distribution_last_weeks(p_weeks)
+
+    def calculate_shift_compensation(
+        self,
+        p_oncall_location_id: str,
+        p_start_time_utc: str,
+    ) -> int:
+        return self._compensation_service.calculate_shift_compensation(
+            p_oncall_location_id=p_oncall_location_id,
+            p_start_time_utc=p_start_time_utc,
+        )
 
     # Ref: UC-009 – zuletzt verwendeten n-Wert persistieren
     def get_last_shift_count_weeks(self) -> int:
