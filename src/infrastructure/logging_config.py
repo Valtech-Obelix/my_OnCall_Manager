@@ -1,16 +1,15 @@
 import   logging
-from     pathlib                                           import Path
-
-
-LOG_FILE_NAME = "my_oncall_manager.log"
-
+from     src.infrastructure.runtime_paths                  import log_file_path
 
 def setup_logging():
 
-    log_file = Path(LOG_FILE_NAME)
+    log_file = log_file_path()
 
     # Root-Logger holen
     logger = logging.getLogger()
+    if getattr(logger, "_my_oncall_logging_configured", False):
+        return
+
     logger.setLevel(logging.DEBUG)
 
     # Formatter
@@ -34,3 +33,4 @@ def setup_logging():
 
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
+    logger._my_oncall_logging_configured = True

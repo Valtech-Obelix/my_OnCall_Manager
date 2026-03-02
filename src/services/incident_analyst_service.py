@@ -17,7 +17,8 @@ class IncidentAnalystService:
                , p_email
                , p_start_datum
                , p_ende_datum=None
-              ):
+               , p_oncall_location_id: str = "GER"
+              ) -> IncidentAnalyst:
         self._logger.debug(  "Input data: %s %s %s %s %s"
                            , p_vornamen
                            , p_nachname
@@ -33,12 +34,14 @@ class IncidentAnalystService:
                                   , p_email       = p_email
                                   , p_start_datum = p_start_datum
                                   , p_ende_datum  = p_ende_datum
+                                  , p_oncall_location_id=p_oncall_location_id
                                  )
             result  = self._repository.add(analyst)
             self._logger.info(  "Creating IncidentAnalyst: %s, %s"
                               , p_nachname
                               , p_vornamen
                              )
+            return result
         except Exception as e:
             self._logger.error("Error while creating IncidentAnalyst: %s", str(e), exc_info=True)
             raise
@@ -59,8 +62,7 @@ class IncidentAnalystService:
     # Ref: UC-003
     def deactivate(self, p_id: int, p_ende_datum: date):
 
-        analysts = self._repository.get_all()
-        analyst = next((a for a in analysts if a.id == p_id), None)
+        analyst = self._repository.find_by_id(p_id)
 
         if analyst is None:
             raise DomainException("IncidentAnalyst nicht gefunden.")
@@ -74,6 +76,35 @@ class IncidentAnalystService:
         self._logger.info("Deactivating IncidentAnalyst id=%s", p_id)
 
         self._repository.update_end_date(p_id, p_ende_datum)
+
+    # Ref: UC-007
+    def update(
+        self,
+        p_id: int,
+        p_vornamen: str,
+        p_nachname: str,
+        p_email: str,
+        p_start_datum: date,
+        p_ende_datum: date | None = None,
+        p_opsgenie_id: str | None = None,
+        p_oncall_location_id: str = "GER"
+    ) -> IncidentAnalyst:
+
+        current = self._repository.find_by_id(p_id)
+        if current is None:
+            raise DomainException("IncidentAnalyst nicht gefunden.")
+
+        updated = IncidentAnalyst(
+            p_id=p_id,
+            p_vornamen=p_vornamen,
+            p_nachname=p_nachname,
+            p_email=p_email,
+            p_start_datum=p_start_datum,
+            p_ende_datum=p_ende_datum,
+            p_opsgenie_id=p_opsgenie_id,
+            p_oncall_location_id=p_oncall_location_id
+        )
+        return self._repository.update(updated)
 
     def get_all(self):
         return self._repository.get_all()

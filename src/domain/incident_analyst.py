@@ -24,22 +24,28 @@ class IncidentAnalyst:
         p_nachname                                    : str,
         p_email                                       : str,
         p_start_datum                                 : date,
-        p_ende_datum                                  : date | None = None
+        p_ende_datum                                  : date | None = None,
+        p_buchungsname                                : str | None = None,
+        p_opsgenie_id                                 : str | None = None,
+        p_oncall_location_id                          : str = "GER"
     ):
         # Ref: UC-001 v0.2 – neue Attribute
         self.id                                       = p_id
         self.vornamen                                 = p_vornamen.strip()
         self.nachname                                 = p_nachname.strip()
+        if p_buchungsname:
+            self.buchungsname = p_buchungsname.strip()
+        else:
+            self.buchungsname = f"{self.vornamen} {self.nachname}".strip()
         self.email                                    = p_email.strip()
+        self.opsgenie_id                              = (
+            p_opsgenie_id.strip() if p_opsgenie_id else None
+        )
+        self.oncall_location_id                       = p_oncall_location_id.strip().upper()
         self.start_datum                              = p_start_datum
         self.ende_datum                               = p_ende_datum
 
         self._validate()
-
-    # Ref: UC-001 v0.2 – Buchungsname abgeleitet
-    @property
-    def buchungsname(self) -> str:
-        return f'{self.nachname}, {self.vornamen}'
 
     @property
     def is_active(self) -> bool:
@@ -54,8 +60,14 @@ class IncidentAnalyst:
         if not self.nachname:
             raise DomainException('Nachname darf nicht leer sein.')
 
+        if not self.buchungsname:
+            raise DomainException('Buchungsname darf nicht leer sein.')
+
         if not self._is_valid_email():
             raise DomainException('Ungültiges Email-Format.')
+
+        if len(self.oncall_location_id) != 3:
+            raise DomainException('Rufbereitschaftsstandort muss genau 3 Zeichen haben.')
 
         if self.ende_datum and self.ende_datum < self.start_datum:
             raise DomainException('Enddatum darf nicht vor Startdatum liegen.')

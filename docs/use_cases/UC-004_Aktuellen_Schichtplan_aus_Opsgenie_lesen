@@ -1,0 +1,152 @@
+# UC-004 – OpsGenie Schichten importieren
+
+## Version
+0.7
+
+---
+
+## Ziel
+
+Als Administrator  
+möchte ich aus OpsGenie die Schichten eines bestimmten Schedules importieren  
+um ausschließlich fachlich relevante On-Call-Zeiträume der Incident-Analysten auszuwerten.
+
+---
+
+## Motivation für Version 0.7
+
+Version 0.7 ergänzt die Importfunktion um:
+- Vorababgleich fehlender `opsgenie_id` mit Fallback über E-Mail.
+
+---
+
+## Modul-Zuordnung
+
+- UI: `opsgenie_import_dialog.py`
+- Geschäftslogik: `opsgenie_service.py`
+- Datenhaltung: `shift_repository.py`
+- Integration: `opsgenie_client.py`
+
+---
+
+## Akteur
+
+Administrator
+
+---
+
+## Vorbedingungen
+
+- API-Zugang zu OpsGenie ist konfiguriert.
+- Schedule-ID ist bekannt.
+- Name des Schichtplans ist bekannt.
+- Incident-Analysten existieren im System.
+- `opsgenie_id` der Incident-Analysten ist gepflegt.
+
+---
+
+## Trigger
+
+Auswahl „OpsGenie Schichten importieren“ im Hauptmenü.
+
+---
+
+## Hauptablauf
+
+1. Administrator öffnet den Import-Dialog.
+2. Administrator wählt einen vorhandenen Schichtplan oder erfasst `Schedule ID` und `Name des Schichtplans`.
+3. Administrator kann optional die Checkbox „Vollständigen JSON-Dump des letzten Imports speichern“ aktivieren.
+4. Administrator startet den Import.
+5. System ruft über die OpsGenie-API die Timeline des Schedules ab.
+6. System iteriert über alle Rotations und Perioden.
+7. System führt vor dem Schichtspeichern einen Vorababgleich der `opsgenie_id` durch.
+8. System ordnet jede Periode über `recipient.id` (`opsgenie_id`) einem Incident-Analysten zu.
+9. System speichert die Schicht, sofern sie noch nicht existiert.
+10. System aktualisiert die Import-Historie.
+11. Bei aktivierter Checkbox speichert das System den vollständigen JSON-Content als letzten Import.
+12. System zeigt das Import-Ergebnis (`imported / skipped / errors`) an.
+13. System zeigt den importierten Zeitraum in lokaler Zeit `Europe/Berlin` an.
+
+---
+
+## Fachliche Importregeln
+
+- Es werden nur Perioden mit `recipient.type == "user"` importiert.
+- Vor dem Schichtspeichern wird für unbekannte `opsgenie_id` ein E-Mail-Fallback versucht.
+- Die Zuordnung zum Incident-Analysten erfolgt über `opsgenie_id`.
+- Nicht zuordenbare `opsgenie_id` werden als `skipped` gewertet und als Warnung geloggt.
+- Duplikate werden über DB-Constraint verhindert und als `skipped` gezählt.
+
+---
+
+## Alternativabläufe
+
+### A1 – API nicht erreichbar
+- Fehlermeldung anzeigen
+- Fehler loggen
+
+### A2 – Authentifizierungsfehler
+- Fehlermeldung anzeigen
+- Kein Import
+
+### A3 – Analyst nicht gefunden
+- Warnung loggen
+- Periode wird übersprungen
+
+---
+
+## Akzeptanzkriterien
+
+- Schichten werden mit `Schedule ID` und `Name des Schichtplans` importiert.
+- Mehrfachimport erzeugt keine Duplikate.
+- Zuordnung erfolgt über `opsgenie_id`.
+- Fehlende `opsgenie_id` können vor dem Import über E-Mail automatisch ergänzt werden.
+- Fehler werden geloggt.
+- Übersprungene Einträge werden als Warning mit Grund geloggt.
+- Zu jedem übersprungenen Eintrag wird ein Debug-Log mit JSON-Ausschnitt geloggt.
+- Der vollständige RAW-JSON-Response wird nicht mehr geloggt.
+- Bei aktivierter Checkbox wird ein vollständiger JSON-Dump des letzten Imports gespeichert.
+- Der importierte Zeitraum wird nach dem Import in `Europe/Berlin` angezeigt (DST-sicher).
+
+---
+
+## Datenmodell
+
+Tabelle: `shifts`
+
+- id INTEGER PRIMARY KEY AUTOINCREMENT
+- analyst_id INTEGER (FK)
+- project TEXT NOT NULL
+- schedule_id TEXT NOT NULL
+- start_time TEXT NOT NULL
+- end_time TEXT NOT NULL
+- UNIQUE (analyst_id, schedule_id, start_time, end_time)
+
+---
+
+## Änderungsverlauf
+## Version 0.7
+- Vorababgleich für fehlende `opsgenie_id` über E-Mail-Fallback ergänzt.
+
+## Version 0.6
+- Zuordnung von Schichten zu Incident-Analysten auf `opsgenie_id` umgestellt.
+
+## Version 0.5
+- Warning-/Debug-Splitting für übersprungene Einträge ergänzt.
+- Checkbox für optionalen JSON-Dump des letzten Imports ergänzt.
+
+## Version 0.4
+- Logging für übersprungene Schichtplan-Einträge mit JSON-Ausschnitt ergänzt.
+- Vollständiges RAW-JSON-Logging entfernt.
+
+## Version 0.3
+- Feld „Projekt“ ersetzt durch „Name des Schichtplans“.
+- Importhistorie und Schichtplan-Auswahl integriert (siehe UC-005).
+- Zeitraumanzeige in lokaler Zeit `Europe/Berlin` ergänzt.
+
+## Version 0.2
+Schichten, die aus irgendeinem Grund einen Split erfahren haben, zusammenfassen, sodass
+es pro Schicht nur einen Eintrag gibt.
+
+## Version 0.1
+Import aus OpsGenie von allen Schichten mit Recipients mit einer Email im Feld Name
