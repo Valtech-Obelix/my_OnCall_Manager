@@ -165,9 +165,37 @@ class Application:
         self,
         p_year: int,
         p_month: int,
+        p_location_filter: str | None = None,
     ) -> list[dict[str, str | int]]:
-        shifts = self._shift_repository.get_shift_entries_for_month(p_year, p_month)
-        return self._compensation_service.summarize_monthly_compensation(shifts)
+        analysts = self.get_all_incident_analysts()
+        booking_entries = self._compensation_service.load_monthly_booking_entries(
+            p_year=p_year,
+            p_month=p_month,
+        )
+        return self._compensation_service.summarize_monthly_compensation_from_bookings(
+            p_booking_entries=booking_entries,
+            p_analysts=analysts,
+            p_location_filter=p_location_filter,
+        )
+
+    def get_monthly_compensation_details(
+        self,
+        p_year: int,
+        p_month: int,
+        p_analyst_id: int,
+        p_location_filter: str | None = None,
+    ) -> list[dict[str, str | int]]:
+        analysts = self.get_all_incident_analysts()
+        booking_entries = self._compensation_service.load_monthly_booking_entries(
+            p_year=p_year,
+            p_month=p_month,
+        )
+        return self._compensation_service.build_booking_compensation_details(
+            p_booking_entries=booking_entries,
+            p_analysts=analysts,
+            p_analyst_id=p_analyst_id,
+            p_location_filter=p_location_filter,
+        )
 
     # Ref: UC-009 – zuletzt verwendeten n-Wert persistieren
     def get_last_shift_count_weeks(self) -> int:

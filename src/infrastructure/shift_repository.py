@@ -326,7 +326,9 @@ class ShiftRepository:
                 ia.id AS analyst_id,
                 ia.buchungsname,
                 COALESCE(ia.oncall_location_id, 'GER') AS oncall_location_id,
-                s.start_time
+                s.start_time,
+                s.schedule_id,
+                s.project
             FROM shifts s
             JOIN incident_analyst ia ON ia.id = s.analyst_id
             WHERE datetime(replace(replace(s.start_time, 'T', ' '), 'Z', ''))
@@ -339,13 +341,15 @@ class ShiftRepository:
         )
 
         entries: list[dict[str, str | int]] = []
-        for analyst_id, buchungsname, oncall_location_id, start_time in cursor.fetchall():
+        for analyst_id, buchungsname, oncall_location_id, start_time, schedule_id, project in cursor.fetchall():
             entries.append(
                 {
                     "analyst_id": int(analyst_id),
                     "buchungsname": str(buchungsname),
                     "oncall_location_id": str(oncall_location_id),
                     "start_time": str(start_time),
+                    "schedule_id": str(schedule_id),
+                    "project": str(project),
                 }
             )
         return entries
