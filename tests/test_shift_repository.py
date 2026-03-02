@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, UTC
 
 from src.domain.shift import Shift
 from src.infrastructure.shift_repository import ShiftRepository
+from src.infrastructure.timezone_utils import BERLIN
 
 
 def _create_repository() -> ShiftRepository:
@@ -29,8 +30,17 @@ def _create_repository() -> ShiftRepository:
             buchungsname TEXT NOT NULL,
             email TEXT NOT NULL UNIQUE,
             opsgenie_id TEXT,
+            oncall_location_id TEXT NOT NULL DEFAULT 'GER' CHECK (length(oncall_location_id) = 3),
             start_datum TEXT NOT NULL,
             ende_datum TEXT
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE rufbereitschaftsstandort (
+            id TEXT PRIMARY KEY CHECK (length(id) = 3),
+            name TEXT NOT NULL
         )
         """
     )
@@ -202,3 +212,78 @@ def test_settings_roundtrip() -> None:
     assert repository.get_setting("last_shift_count_weeks") is None
     repository.set_setting("last_shift_count_weeks", "6")
     assert repository.get_setting("last_shift_count_weeks") == "6"
+
+
+def test_get_location_shift_distribution_last_weeks() -> None:
+    repository = _create_repository()
+    now_local = datetime.now(BERLIN).replace(microsecond=0)
+    current_monday_local = (now_local - timedelta(days=now_local.weekday())).replace(
+        hour=12, minute=0, second=0
+    )
+    current_week_shift = (current_monday_local + timedelta(days=1)).astimezone(UTC)
+    previous_week_shift = (current_monday_local - timedelta(days=1)).astimezone(UTC)
+    old_shift = (current_monday_local - timedelta(days=120)).astimezone(UTC)
+
+    repository._connection.execute(
+        """
+        INSERT INTO rufbereitschaftsstandort (id, name)
+        VALUES
+            ('GER', 'Deutschland'),
+            ('USA', 'Vereinigte Staaten')
+        """
+    )
+    repository._connection.execute(
+        """
+        INSERT INTO incident_analyst (
+            id, vornamen, nachname, buchungsname, email, opsgenie_id, oncall_location_id, start_datum, ende_datum
+        )
+        VALUES
+            (1, 'Max', 'Aktiv', 'Aktiv, Max', 'max.aktiv@example.com', NULL, 'GER', '2025-01-01', NULL),
+            (2, 'Sue', 'West', 'West, Sue', 'sue.west@example.com', NULL, 'USA', '2025-01-01', NULL)
+        """
+    )
+
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=1,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time=current_week_shift.isoformat().replace("+00:00", "Z"),
+            p_end_time=(current_week_shift + timedelta(hours=8)).isoformat().replace("+00:00", "Z"),
+        )
+    )
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=2,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time=previous_week_shift.isoformat().replace("+00:00", "Z"),
+            p_end_time=(previous_week_shift + timedelta(hours=8)).isoformat().replace("+00:00", "Z"),
+        )
+    )
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=1,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time=old_shift.isoformat().replace("+00:00", "Z"),
+            p_end_time=(old_shift + timedelta(hours=8)).isoformat().replace("+00:00", "Z"),
+        )
+    )
+
+    result = repository.get_location_shift_distribution_last_weeks(2)
+
+    assert len(result["weeks"]) == 2
+    assert result["locations"] == [
+        {"location_id": "GER", "location_name": "Deutschland"},
+        {"location_id": "USA", "location_name": "Vereinigte Staaten"},
+    ]
+    counts_week_1 = result["weeks"][0]["counts"]
+    counts_week_2 = result["weeks"][1]["counts"]
+    assert isinstance(counts_week_1, dict)
+    assert isinstance(counts_week_2, dict)
+    assert sum(int(v) for v in counts_week_1.values()) == 1
+    assert sum(int(v) for v in counts_week_2.values()) == 1

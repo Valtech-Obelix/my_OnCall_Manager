@@ -143,6 +143,12 @@ class Application:
     ) -> list[dict[str, str | int]]:
         return self._shift_repository.get_active_analyst_shift_counts_last_weeks(p_weeks)
 
+    def get_location_shift_distribution_last_weeks(
+        self,
+        p_weeks: int
+    ) -> dict[str, list[dict[str, str | int | dict[str, int]]]]:
+        return self._shift_repository.get_location_shift_distribution_last_weeks(p_weeks)
+
     # Ref: UC-009 – zuletzt verwendeten n-Wert persistieren
     def get_last_shift_count_weeks(self) -> int:
         value = self._shift_repository.get_setting("last_shift_count_weeks")

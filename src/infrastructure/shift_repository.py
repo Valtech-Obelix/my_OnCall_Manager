@@ -1,5 +1,8 @@
 import   sqlite3
+from    datetime                                            import datetime, timedelta
+
 from     src.domain.shift                                  import Shift
+from     src.infrastructure.timezone_utils                 import BERLIN, UTC, parse_utc_timestamp
 
 
 class ShiftRepository:
@@ -219,3 +222,83 @@ class ShiftRepository:
             (p_key, p_value)
         )
         self._connection.commit()
+
+    def get_location_shift_distribution_last_weeks(
+        self,
+        p_weeks: int
+    ) -> dict[str, list[dict[str, str | int | dict[str, int]]]]:
+        weeks = max(1, int(p_weeks))
+        now_local = datetime.now(BERLIN)
+        current_monday = (now_local - timedelta(days=now_local.weekday())).date()
+        start_monday = current_monday - timedelta(weeks=weeks - 1)
+        end_exclusive = current_monday + timedelta(weeks=1)
+
+        start_utc = datetime.combine(start_monday, datetime.min.time(), BERLIN).astimezone(UTC)
+        end_utc = datetime.combine(end_exclusive, datetime.min.time(), BERLIN).astimezone(UTC)
+
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT
+                s.start_time,
+                COALESCE(ia.oncall_location_id, 'GER') AS location_id,
+                COALESCE(rl.name, COALESCE(ia.oncall_location_id, 'GER')) AS location_name
+            FROM shifts s
+            LEFT JOIN incident_analyst ia ON ia.id = s.analyst_id
+            LEFT JOIN rufbereitschaftsstandort rl ON rl.id = ia.oncall_location_id
+            WHERE datetime(replace(replace(s.start_time, 'T', ' '), 'Z', ''))
+                  >= datetime(replace(replace(?, 'T', ' '), 'Z', ''))
+              AND datetime(replace(replace(s.start_time, 'T', ' '), 'Z', ''))
+                  < datetime(replace(replace(?, 'T', ' '), 'Z', ''))
+            ORDER BY s.start_time ASC
+            ''',
+            (
+                start_utc.isoformat().replace("+00:00", "Z"),
+                end_utc.isoformat().replace("+00:00", "Z"),
+            )
+        )
+
+        week_keys = [
+            start_monday + timedelta(weeks=index)
+            for index in range(weeks)
+        ]
+        week_counts: dict[str, dict[str, int]] = {
+            week.isoformat(): {} for week in week_keys
+        }
+        location_labels: dict[str, str] = {}
+
+        for start_time, location_id, location_name in cursor.fetchall():
+            start_local = parse_utc_timestamp(str(start_time)).astimezone(BERLIN)
+            week_start = (start_local - timedelta(days=start_local.weekday())).date()
+            week_key = week_start.isoformat()
+            if week_key not in week_counts:
+                continue
+
+            location_key = str(location_id or "GER")
+            location_labels[location_key] = str(location_name or location_key)
+            week_counts[week_key][location_key] = week_counts[week_key].get(location_key, 0) + 1
+
+        locations = [
+            {
+                "location_id": location_id,
+                "location_name": location_labels[location_id],
+            }
+            for location_id in sorted(location_labels.keys())
+        ]
+
+        week_entries: list[dict[str, str | int | dict[str, int]]] = []
+        for week_start in week_keys:
+            week_key = week_start.isoformat()
+            week_label = week_start.strftime("KW %V (%d.%m.)")
+            week_entries.append(
+                {
+                    "week_start": week_key,
+                    "week_label": week_label,
+                    "counts": week_counts.get(week_key, {}),
+                }
+            )
+
+        return {
+            "locations": locations,
+            "weeks": week_entries,
+        }

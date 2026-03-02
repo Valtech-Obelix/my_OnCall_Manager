@@ -15,6 +15,7 @@ from    src.ui.shift_plan_view_dialog                       import  ShiftPlanVie
 from    src.ui.incident_analyst_shift_count_dialog          import  IncidentAnalystShiftCountDialog
 from    src.ui.oncall_location_dialog                       import  OnCallLocationDialog
 from    src.ui.shift_booking_compare_dialog                 import  ShiftBookingCompareDialog
+from    src.ui.location_shift_distribution_dialog           import  LocationShiftDistributionDialog
 
 
 APP_TITLE                               =   'my_OnCall_Manager'
@@ -24,6 +25,7 @@ ACTION_VIEW_SHIFT_PLAN                  =   'Schichtplan anzeigen'
 ACTION_VIEW_IA_SHIFT_COUNTS             =   'Aktive IA Schichtanzahl anzeigen'
 ACTION_VIEW_ONCALL_LOCATIONS            =   'Rufbereitschaftsstandorte'
 ACTION_COMPARE_SHIFTS_BOOKINGS          =   'Schichtplan vs. Buchungen vergleichen'
+ACTION_LOCATION_SHIFT_DISTRIBUTION      =   'Schichtverteilung nach Standort'
 ACTION_OPEN_BOOKING_FOLDER              =   'CSV-Ordner öffnen'
 ACTION_CLOSE                            =   'Schließen'
 
@@ -136,6 +138,10 @@ class MainWindow(QMainWindow):
         action_compare_shifts.triggered.connect(self._open_shift_booking_compare_dialog)
         analysis_menu.addAction(action_compare_shifts)
 
+        action_location_distribution = QAction(ACTION_LOCATION_SHIFT_DISTRIBUTION, self)
+        action_location_distribution.triggered.connect(self._open_location_shift_distribution_dialog)
+        analysis_menu.addAction(action_location_distribution)
+
 
     def _open_incident_analyst_dialog(self):
 
@@ -164,6 +170,10 @@ class MainWindow(QMainWindow):
 
     def _open_shift_booking_compare_dialog(self):
         dialog = ShiftBookingCompareDialog(self._application, self)
+        dialog.exec()
+
+    def _open_location_shift_distribution_dialog(self):
+        dialog = LocationShiftDistributionDialog(self._application, self)
         dialog.exec()
 
     def _open_booking_csv_folder(self):
