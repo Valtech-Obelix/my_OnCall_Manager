@@ -1,11 +1,14 @@
-from    PySide6.QtGui                                       import QAction
+from    PySide6.QtCore                                      import QUrl
+from    PySide6.QtGui                                       import QAction, QDesktopServices
 from    PySide6.QtWidgets                                   import  (
                                                                         QMainWindow,
                                                                         QLabel,
+                                                                        QMessageBox,
                                                                         QWidget,
                                                                         QVBoxLayout,
                                                                     )
 from    pathlib                                             import Path
+from    src.infrastructure.runtime_paths                    import resource_path
 from    src.ui.incident_analyst_dialog                      import  IncidentAnalystDialog
 from    src.ui.opsgenie_import_dialog                       import  OpsGenieImportDialog
 from    src.ui.shift_plan_view_dialog                       import  ShiftPlanViewDialog
@@ -21,6 +24,7 @@ ACTION_VIEW_SHIFT_PLAN                  =   'Schichtplan anzeigen'
 ACTION_VIEW_IA_SHIFT_COUNTS             =   'Aktive IA Schichtanzahl anzeigen'
 ACTION_VIEW_ONCALL_LOCATIONS            =   'Rufbereitschaftsstandorte'
 ACTION_COMPARE_SHIFTS_BOOKINGS          =   'Schichtplan vs. Buchungen vergleichen'
+ACTION_OPEN_BOOKING_FOLDER              =   'CSV-Ordner öffnen'
 ACTION_CLOSE                            =   'Schließen'
 
 
@@ -61,7 +65,9 @@ class MainWindow(QMainWindow):
 
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
-        background_path = (Path(__file__).parent.parent / "resources" / "evoli.png").resolve()
+        background_path = resource_path("src", "resources", "evoli.png")
+        if not background_path.exists():
+            background_path = (Path(__file__).parent.parent / "resources" / "evoli.png").resolve()
         self.setStyleSheet(
             f"""
             #mainCentralWidget {{
@@ -110,12 +116,16 @@ class MainWindow(QMainWindow):
         action_import_shifts.triggered.connect(self._open_import_dialog)
         if self._application.opsgenie_service is None:
             action_import_shifts.setEnabled(False)
-            action_import_shifts.setToolTip('OPS_GENIE_API_KEY fehlt.')
+            action_import_shifts.setToolTip('OpsGenie API-Key fehlt.')
         shift_menu.addAction(action_import_shifts)
 
         action_view_shift_plan = QAction(ACTION_VIEW_SHIFT_PLAN, self)
         action_view_shift_plan.triggered.connect(self._open_shift_plan_view_dialog)
         shift_menu.addAction(action_view_shift_plan)
+
+        action_open_booking_folder = QAction(ACTION_OPEN_BOOKING_FOLDER, self)
+        action_open_booking_folder.triggered.connect(self._open_booking_csv_folder)
+        shift_menu.addAction(action_open_booking_folder)
 
         analysis_menu = menu_bar.addMenu("Auswertung")
         action_ia_shift_counts = QAction(ACTION_VIEW_IA_SHIFT_COUNTS, self)
@@ -155,3 +165,13 @@ class MainWindow(QMainWindow):
     def _open_shift_booking_compare_dialog(self):
         dialog = ShiftBookingCompareDialog(self._application, self)
         dialog.exec()
+
+    def _open_booking_csv_folder(self):
+        booking_folder = self._application.get_booking_data_dir()
+        opened = QDesktopServices.openUrl(QUrl.fromLocalFile(str(booking_folder)))
+        if not opened:
+            QMessageBox.warning(
+                self,
+                APP_TITLE,
+                f"CSV-Ordner konnte nicht geoeffnet werden:\n{booking_folder}",
+            )

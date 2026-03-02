@@ -2,7 +2,6 @@ import csv
 import re
 from collections import Counter
 from datetime import date, datetime, timedelta
-from pathlib import Path
 
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtGui import QColor
@@ -22,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.infrastructure.timezone_utils import BERLIN, parse_utc_timestamp
+from src.infrastructure.runtime_paths import booking_csv_files
 
 
 APP_TITLE = "OpsGenie vs. Buchungen vergleichen"
@@ -173,8 +173,7 @@ class ShiftBookingCompareDialog(QDialog):
         p_week_end: date,
     ) -> dict[tuple[date, str], Counter[str]]:
         result: dict[tuple[date, str], Counter[str]] = {}
-        data_path = Path(__file__).resolve().parents[2] / "data"
-        for file_path in sorted(data_path.glob("*.csv")):
+        for file_path in booking_csv_files():
             with file_path.open("r", encoding="utf-8-sig", newline="") as csv_file:
                 reader = csv.reader(csv_file, delimiter=";")
                 header = None

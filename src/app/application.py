@@ -1,6 +1,6 @@
 import  sys
-import  os
 import  logging
+from    pathlib                                             import Path
 from    PySide6.QtWidgets                                   import  QApplication
 from    datetime                                            import  date
 
@@ -14,6 +14,8 @@ from    src.infrastructure.shift_repository                 import  ShiftReposit
 from    src.services.opsgenie_service                       import  OpsGenieService
 from    src.infrastructure.opsgenie_client                  import  OpsGenieClient
 from    src.infrastructure.oncall_location_repository       import  OnCallLocationRepository
+from    src.infrastructure.secret_loader                    import  load_opsgenie_api_key
+from    src.infrastructure.runtime_paths                    import  user_booking_data_dir
 
 class Application:
 
@@ -26,7 +28,7 @@ class Application:
         self._logger.info('=====================')
         self._logger.info('')
 
-        api_key = os.getenv('OPS_GENIE_API_KEY')
+        api_key = load_opsgenie_api_key(self._logger.warning)
         self._opsgenie_client = None
         self._opsgenie_service = None
         if api_key:
@@ -34,7 +36,8 @@ class Application:
             self._opsgenie_client = OpsGenieClient(p_api_key=api_key)
         else:
             self._logger.warning(
-                'OPS_GENIE_API_KEY ist nicht gesetzt. OpsGenie-Import ist deaktiviert.'
+                'Kein OpsGenie API-Key verfuegbar (ENV oder 1Password). '
+                'OpsGenie-Import ist deaktiviert.'
             )
 
         self._qt_app = QApplication(sys.argv)
@@ -129,6 +132,9 @@ class Application:
     # Ref: UC-008 – Schichtplan anzeigen
     def get_schedule_entries(self, p_schedule_id: str) -> list[dict[str, str | int | None]]:
         return self._shift_repository.get_schedule_entries(p_schedule_id)
+
+    def get_booking_data_dir(self) -> Path:
+        return user_booking_data_dir()
 
     # Ref: UC-009 – Aktive IA nach Schichtanzahl der letzten n Wochen
     def get_active_analyst_shift_counts_last_weeks(

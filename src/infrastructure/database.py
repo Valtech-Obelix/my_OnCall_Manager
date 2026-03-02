@@ -1,19 +1,27 @@
 
 import sqlite3
+import shutil
 from   pathlib                         import Path
-
-
-DB_FILE_NAME                           = 'my_oncall_manager.db'
-
+from   src.infrastructure.runtime_paths import db_file_path, seed_db_path
 
 class Database:
 
     def __init__(self, p_db_path: Path | None = None):
         if p_db_path is None:
-            p_db_path = Path(DB_FILE_NAME)
+            p_db_path = db_file_path()
+            self._copy_seed_db_if_missing(p_db_path)
 
         self._connection = sqlite3.connect(p_db_path)
         self._connection.execute('PRAGMA foreign_keys = ON')
+
+    def _copy_seed_db_if_missing(self, p_target_db_path: Path) -> None:
+        if p_target_db_path.exists():
+            return
+        seed_path = seed_db_path()
+        if seed_path is None:
+            return
+        p_target_db_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(seed_path, p_target_db_path)
 
     def get_connection(self) -> sqlite3.Connection:
         return self._connection
