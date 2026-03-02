@@ -302,3 +302,50 @@ class ShiftRepository:
             "locations": locations,
             "weeks": week_entries,
         }
+
+    def get_shift_entries_for_month(
+        self,
+        p_year: int,
+        p_month: int
+    ) -> list[dict[str, str | int]]:
+        year = int(p_year)
+        month = int(p_month)
+        start_local = datetime(year, month, 1, 0, 0, 0, tzinfo=BERLIN)
+        if month == 12:
+            end_local = datetime(year + 1, 1, 1, 0, 0, 0, tzinfo=BERLIN)
+        else:
+            end_local = datetime(year, month + 1, 1, 0, 0, 0, tzinfo=BERLIN)
+
+        start_utc = start_local.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        end_utc = end_local.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT
+                ia.id AS analyst_id,
+                ia.buchungsname,
+                COALESCE(ia.oncall_location_id, 'GER') AS oncall_location_id,
+                s.start_time
+            FROM shifts s
+            JOIN incident_analyst ia ON ia.id = s.analyst_id
+            WHERE datetime(replace(replace(s.start_time, 'T', ' '), 'Z', ''))
+                  >= datetime(replace(replace(?, 'T', ' '), 'Z', ''))
+              AND datetime(replace(replace(s.start_time, 'T', ' '), 'Z', ''))
+                  < datetime(replace(replace(?, 'T', ' '), 'Z', ''))
+            ORDER BY ia.buchungsname ASC, s.start_time ASC
+            ''',
+            (start_utc, end_utc)
+        )
+
+        entries: list[dict[str, str | int]] = []
+        for analyst_id, buchungsname, oncall_location_id, start_time in cursor.fetchall():
+            entries.append(
+                {
+                    "analyst_id": int(analyst_id),
+                    "buchungsname": str(buchungsname),
+                    "oncall_location_id": str(oncall_location_id),
+                    "start_time": str(start_time),
+                }
+            )
+        return entries

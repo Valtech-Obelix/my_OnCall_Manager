@@ -87,3 +87,46 @@ class CompensationService:
         month = (h + l - 7 * m + 114) // 31
         day = ((h + l - 7 * m + 114) % 31) + 1
         return date(p_year, month, day)
+
+    def summarize_monthly_compensation(
+        self,
+        p_shift_entries: list[dict[str, str | int]],
+    ) -> list[dict[str, str | int]]:
+        aggregated: dict[int, dict[str, str | int]] = {}
+
+        for entry in p_shift_entries:
+            analyst_id = int(entry["analyst_id"])
+            buchungsname = str(entry["buchungsname"])
+            location_id = str(entry["oncall_location_id"]).strip().upper()
+            start_time = str(entry["start_time"])
+            slot = self.determine_shift_slot(start_time)
+            amount = self.calculate_shift_compensation(
+                p_oncall_location_id=location_id,
+                p_start_time_utc=start_time,
+            )
+
+            if analyst_id not in aggregated:
+                aggregated[analyst_id] = {
+                    "analyst_id": analyst_id,
+                    "buchungsname": buchungsname,
+                    "oncall_location_id": location_id,
+                    "shift_count_f": 0,
+                    "shift_count_t": 0,
+                    "shift_count_s": 0,
+                    "total_amount_eur": 0,
+                }
+
+            if slot == "F":
+                aggregated[analyst_id]["shift_count_f"] = int(aggregated[analyst_id]["shift_count_f"]) + 1
+            elif slot == "T":
+                aggregated[analyst_id]["shift_count_t"] = int(aggregated[analyst_id]["shift_count_t"]) + 1
+            else:
+                aggregated[analyst_id]["shift_count_s"] = int(aggregated[analyst_id]["shift_count_s"]) + 1
+
+            aggregated[analyst_id]["total_amount_eur"] = (
+                int(aggregated[analyst_id]["total_amount_eur"]) + int(amount)
+            )
+
+        rows = list(aggregated.values())
+        rows.sort(key=lambda row: str(row["buchungsname"]))
+        return rows

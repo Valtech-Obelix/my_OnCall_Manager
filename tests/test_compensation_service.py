@@ -32,3 +32,42 @@ def test_unknown_location_raises_domain_exception() -> None:
     service = CompensationService()
     with pytest.raises(DomainException):
         service.calculate_shift_compensation("USA", "2026-03-03T01:00:00Z")
+
+
+def test_summarize_monthly_compensation_groups_by_analyst() -> None:
+    service = CompensationService()
+    rows = service.summarize_monthly_compensation(
+        [
+            {
+                "analyst_id": 1,
+                "buchungsname": "Aktiv, Max",
+                "oncall_location_id": "GER",
+                "start_time": "2026-03-03T01:00:00Z",
+            },
+            {
+                "analyst_id": 1,
+                "buchungsname": "Aktiv, Max",
+                "oncall_location_id": "GER",
+                "start_time": "2026-03-03T09:00:00Z",
+            },
+            {
+                "analyst_id": 2,
+                "buchungsname": "West, Sue",
+                "oncall_location_id": "IND",
+                "start_time": "2026-03-07T01:00:00Z",
+            },
+        ]
+    )
+
+    assert len(rows) == 2
+    max_row = rows[0]
+    sue_row = rows[1]
+
+    assert max_row["buchungsname"] == "Aktiv, Max"
+    assert max_row["shift_count_f"] == 1
+    assert max_row["shift_count_t"] == 1
+    assert max_row["shift_count_s"] == 0
+    assert max_row["total_amount_eur"] == 125
+
+    assert sue_row["buchungsname"] == "West, Sue"
+    assert sue_row["total_amount_eur"] == 10
