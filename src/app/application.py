@@ -161,6 +161,14 @@ class Application:
             p_start_time_utc=p_start_time_utc,
         )
 
+    def get_monthly_compensation_summary(
+        self,
+        p_year: int,
+        p_month: int,
+    ) -> list[dict[str, str | int]]:
+        shifts = self._shift_repository.get_shift_entries_for_month(p_year, p_month)
+        return self._compensation_service.summarize_monthly_compensation(shifts)
+
     # Ref: UC-009 – zuletzt verwendeten n-Wert persistieren
     def get_last_shift_count_weeks(self) -> int:
         value = self._shift_repository.get_setting("last_shift_count_weeks")

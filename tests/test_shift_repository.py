@@ -214,6 +214,46 @@ def test_settings_roundtrip() -> None:
     assert repository.get_setting("last_shift_count_weeks") == "6"
 
 
+def test_get_shift_entries_for_month_filters_by_month() -> None:
+    repository = _create_repository()
+    repository._connection.execute(
+        """
+        INSERT INTO incident_analyst (
+            id, vornamen, nachname, buchungsname, email, opsgenie_id, oncall_location_id, start_datum, ende_datum
+        )
+        VALUES
+            (1, 'Max', 'Aktiv', 'Aktiv, Max', 'max.aktiv@example.com', NULL, 'GER', '2025-01-01', NULL)
+        """
+    )
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=1,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time="2026-03-15T08:00:00Z",
+            p_end_time="2026-03-15T16:00:00Z",
+        )
+    )
+    repository.save(
+        Shift(
+            p_id=None,
+            p_analyst_id=1,
+            p_project="A",
+            p_schedule_id="schedule-42",
+            p_start_time="2026-04-01T08:00:00Z",
+            p_end_time="2026-04-01T16:00:00Z",
+        )
+    )
+
+    rows = repository.get_shift_entries_for_month(2026, 3)
+
+    assert len(rows) == 1
+    assert rows[0]["buchungsname"] == "Aktiv, Max"
+    assert rows[0]["oncall_location_id"] == "GER"
+    assert rows[0]["start_time"] == "2026-03-15T08:00:00Z"
+
+
 def test_get_location_shift_distribution_last_weeks() -> None:
     repository = _create_repository()
     now_local = datetime.now(BERLIN).replace(microsecond=0)
