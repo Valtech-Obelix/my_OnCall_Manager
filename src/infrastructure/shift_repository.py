@@ -142,6 +142,21 @@ class ShiftRepository:
             )
         return entries
 
+    def get_schedule_shift_starts(
+        self,
+        p_schedule_id: str
+    ) -> list[tuple[int, str]]:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT analyst_id, start_time
+            FROM shifts
+            WHERE schedule_id = ?
+            ''',
+            (p_schedule_id,)
+        )
+        return [(int(row[0]), str(row[1])) for row in cursor.fetchall()]
+
     def get_active_analyst_shift_counts_last_weeks(
         self,
         p_weeks: int

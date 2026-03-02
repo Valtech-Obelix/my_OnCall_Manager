@@ -1,6 +1,6 @@
 import  json
 from    pathlib                                             import Path
-from    datetime                                            import datetime, timedelta
+from    datetime                                            import datetime, date, timedelta
 from    math                                                import ceil
 from    src.domain.import_result                            import  ImportResult
 from    src.domain.shift                                    import  Shift
@@ -50,6 +50,8 @@ class OpsGenieService:
             p_schedule_id=p_schedule_id,
             p_schedule_name=p_schedule_name
         )
+
+        existing_shift_keys = self._load_existing_shift_keys(p_schedule_id)
 
         since, until, _, _, _ = self._get_import_window(
             p_schedule_id
@@ -177,6 +179,28 @@ class OpsGenieService:
                             skipped += 1
                             continue
 
+                        shift_key = self._period_shift_key(
+                            p_period=period,
+                            p_schedule_id=p_schedule_id,
+                            p_analyst_id=analyst.id
+                        )
+                        if shift_key is None:
+                            self._log_skipped_period(
+                                p_reason='invalid period key',
+                                p_rotation=rotation,
+                                p_period=period
+                            )
+                            skipped += 1
+                            continue
+                        if shift_key in existing_shift_keys:
+                            self._log_skipped_period(
+                                p_reason='duplicate shift slot (already exists)',
+                                p_rotation=rotation,
+                                p_period=period
+                            )
+                            skipped += 1
+                            continue
+
                         shift = Shift(
                             p_id=None,
                             p_analyst_id=analyst.id,
@@ -190,6 +214,7 @@ class OpsGenieService:
 
                         if saved:
                             imported += 1
+                            existing_shift_keys.add(shift_key)
                         else:
                             self._log_skipped_period(
                                 p_reason='duplicate shift (already exists)',
@@ -262,20 +287,49 @@ class OpsGenieService:
             return None
 
         start_local = parse_utc_timestamp(str(start_date)).astimezone(BERLIN)
-        if start_local.hour < self.SHIFT_BOUNDARY_HOUR:
-            display_day = start_local.date() - timedelta(days=1)
-        else:
-            display_day = start_local.date()
+        display_day, slot_index = self._display_day_and_slot(start_local)
 
-        shifted_hour = (start_local.hour - self.SHIFT_BOUNDARY_HOUR) % 24
+        return recipient_id, display_day.isoformat(), slot_index
+
+    def _period_shift_key(
+        self,
+        p_period: dict,
+        p_schedule_id: str,
+        p_analyst_id: int
+    ) -> tuple[str, int, str, int] | None:
+        start_date = p_period.get("startDate")
+        end_date = p_period.get("endDate")
+        if not start_date or not end_date:
+            return None
+        start_local = parse_utc_timestamp(str(start_date)).astimezone(BERLIN)
+        display_day, slot_index = self._display_day_and_slot(start_local)
+        return p_schedule_id, int(p_analyst_id), display_day.isoformat(), slot_index
+
+    def _display_day_and_slot(self, p_start_local: datetime) -> tuple[date, int]:
+        if p_start_local.hour < self.SHIFT_BOUNDARY_HOUR:
+            display_day = p_start_local.date() - timedelta(days=1)
+        else:
+            display_day = p_start_local.date()
+
+        shifted_hour = (p_start_local.hour - self.SHIFT_BOUNDARY_HOUR) % 24
         if shifted_hour < 8:
             slot_index = 0
         elif shifted_hour < 16:
             slot_index = 1
         else:
             slot_index = 2
+        return display_day, slot_index
 
-        return recipient_id, display_day.isoformat(), slot_index
+    def _load_existing_shift_keys(
+        self,
+        p_schedule_id: str
+    ) -> set[tuple[str, int, str, int]]:
+        keys: set[tuple[str, int, str, int]] = set()
+        for analyst_id, start_time in self._shift_repository.get_schedule_shift_starts(p_schedule_id):
+            start_local = parse_utc_timestamp(start_time).astimezone(BERLIN)
+            display_day, slot_index = self._display_day_and_slot(start_local)
+            keys.add((p_schedule_id, int(analyst_id), display_day.isoformat(), slot_index))
+        return keys
 
     def _period_start_in_window(
         self,

@@ -11,6 +11,7 @@ from    src.ui.opsgenie_import_dialog                       import  OpsGenieImpo
 from    src.ui.shift_plan_view_dialog                       import  ShiftPlanViewDialog
 from    src.ui.incident_analyst_shift_count_dialog          import  IncidentAnalystShiftCountDialog
 from    src.ui.oncall_location_dialog                       import  OnCallLocationDialog
+from    src.ui.shift_booking_compare_dialog                 import  ShiftBookingCompareDialog
 
 
 APP_TITLE                               =   'my_OnCall_Manager'
@@ -19,6 +20,7 @@ ACTION_IMPORT_SHIFTS                    =   'OpsGenie Schichten importieren'
 ACTION_VIEW_SHIFT_PLAN                  =   'Schichtplan anzeigen'
 ACTION_VIEW_IA_SHIFT_COUNTS             =   'Aktive IA Schichtanzahl anzeigen'
 ACTION_VIEW_ONCALL_LOCATIONS            =   'Rufbereitschaftsstandorte'
+ACTION_COMPARE_SHIFTS_BOOKINGS          =   'Schichtplan vs. Buchungen vergleichen'
 ACTION_CLOSE                            =   'Schließen'
 
 
@@ -120,6 +122,10 @@ class MainWindow(QMainWindow):
         action_ia_shift_counts.triggered.connect(self._open_incident_analyst_shift_count_dialog)
         analysis_menu.addAction(action_ia_shift_counts)
 
+        action_compare_shifts = QAction(ACTION_COMPARE_SHIFTS_BOOKINGS, self)
+        action_compare_shifts.triggered.connect(self._open_shift_booking_compare_dialog)
+        analysis_menu.addAction(action_compare_shifts)
+
 
     def _open_incident_analyst_dialog(self):
 
@@ -144,4 +150,8 @@ class MainWindow(QMainWindow):
 
     def _open_oncall_location_dialog(self):
         dialog = OnCallLocationDialog(self._application, self)
+        dialog.exec()
+
+    def _open_shift_booking_compare_dialog(self):
+        dialog = ShiftBookingCompareDialog(self._application, self)
         dialog.exec()

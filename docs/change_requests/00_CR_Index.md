@@ -21,6 +21,8 @@
 | CR-017 | Kombinierter Anzeige-/Erfassungsdialog für Rufbereitschaftsstandorte | umgesetzt    | UC-011   | hoch      | 2026-03-01  | 2026-03-01   | [CR-017](./CR-017_Dialog_Rufbereitschaftsstandorte.md) |
 | CR-018 | Incident-Analysten einem Rufbereitschaftsstandort zuordnen (Option 1) | umgesetzt    | UC-011   | hoch      | 2026-03-01  | 2026-03-01   | [CR-018](./CR-018_Incident_Analyst_Standortzuordnung.md) |
 | CR-019 | Umbau IA-Erfassungsoberfläche analog Standortdialog | umgesetzt    | UC-001/2/3/7/11 | hoch      | 2026-03-01  | 2026-03-01   | [CR-019](./CR-019_Umbau_IA_Dialog_analog_Standortdialog.md) |
+| CR-020 | Vergleichsdialog Schichtplan vs. Buchungen (Wochenansicht) | umgesetzt    | UC-012   | hoch      | 2026-03-01  | 2026-03-01   | [CR-020](./CR-020_Vergleichsdialog_Schichtplan_vs_Buchungen.md) |
+| CR-021 | Deduplizierung von OpsGenie-Schichten pro Slot (inkl. Altbestand) | umgesetzt    | UC-004/012 | hoch      | 2026-03-02  | 2026-03-02   | [CR-021](./CR-021_Deduplizierung_OpsGenie_Shifts_pro_Slot.md) |
 
 ## Statusdefinition
 
