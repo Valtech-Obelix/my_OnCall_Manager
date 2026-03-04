@@ -1,3 +1,6 @@
+from datetime import date
+from pathlib import Path
+
 import pytest
 
 from src.domain.exceptions import DomainException
@@ -39,6 +42,88 @@ def test_unknown_location_raises_domain_exception() -> None:
     service = CompensationService()
     with pytest.raises(DomainException):
         service.calculate_shift_compensation("USA", "2026-03-03T01:00:00Z")
+
+
+@pytest.mark.parametrize(
+    "location,day,slot,expected",
+    [
+        ("GER", "2026-03-03", "F", "Rufbereitschaft Werktags"),
+        ("GER", "2026-03-03", "S", "Rufbereitschaft Werktags"),
+        ("GER", "2026-03-03", "T", None),
+        ("GER", "2026-03-07", "T", "Rufbereitschaft Samstags und Betriebsurlaub"),
+        ("GER", "2026-05-01", "F", "Rufbereitschaft Sonn- und Feiertags"),
+        ("IND", "2026-03-03", "F", "On Call Shift Working days"),
+        ("IND", "2026-03-08", "S", "On Call Shift Weekend and Holidays"),
+    ],
+)
+def test_determine_expected_booking_task(
+    location: str,
+    day: str,
+    slot: str,
+    expected: str | None,
+) -> None:
+    service = CompensationService()
+    assert (
+        service.determine_expected_booking_task(
+            p_oncall_location_id=location,
+            p_day=date.fromisoformat(day),
+            p_slot=slot,
+        )
+        == expected
+    )
+
+
+def test_determine_expected_booking_task_rejects_unknown_slot() -> None:
+    service = CompensationService()
+    with pytest.raises(DomainException):
+        service.determine_expected_booking_task(
+            p_oncall_location_id="GER",
+            p_day=date(2026, 3, 3),
+            p_slot="X",
+        )
+
+
+@pytest.mark.parametrize(
+    "hours,expected",
+    [
+        ("1,00", 1),
+        ("-1,00", -1),
+        ("2.00", 2),
+        ("1.000,00", 1000),
+        ("foo", None),
+        ("0,50", None),
+    ],
+)
+def test_parse_booking_units(hours: str, expected: int | None) -> None:
+    service = CompensationService()
+    assert service.parse_booking_units(hours) == expected
+
+
+def test_load_monthly_booking_entries_applies_counter_bookings(monkeypatch, tmp_path: Path) -> None:
+    csv_path = tmp_path / "bookings.csv"
+    csv_path.write_text(
+        (
+            "\"report\"\n"
+            "\"Internal id\";\"Date\";\"User\";\"Client\";\"Project\";\"Task - Task type\";\"Task\";\"Time (Hours)\";\"Notes\"\n"
+            "\"1\";\"03-02-26\";\"Aysel, Mecnur\";\"c\";\"p\";\"On Call\";\"Rufbereitschaft Werktags\";\"1,00\";\"[Früh]\"\n"
+            "\"2\";\"03-02-26\";\"Aysel, Mecnur\";\"c\";\"p\";\"On Call\";\"Rufbereitschaft Werktags\";\"1,00\";\"[Früh]\"\n"
+            "\"3\";\"03-02-26\";\"Aysel, Mecnur\";\"c\";\"p\";\"On Call\";\"Rufbereitschaft Werktags\";\"-1,00\";\"[Früh]\"\n"
+            "\"4\";\"03-02-26\";\"Aysel, Mecnur\";\"c\";\"p\";\"Client Utilized\";\"RB-Abstimmung\";\"1,00\";\"Weekly\"\n"
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "src.services.compensation_service.booking_csv_files",
+        lambda: [csv_path],
+    )
+
+    service = CompensationService()
+    entries = service.load_monthly_booking_entries(2026, 2)
+
+    assert len(entries) == 1
+    assert entries[0]["booking_date"] == "2026-02-03"
+    assert entries[0]["user"] == "Aysel, Mecnur"
+    assert entries[0]["slot"] == "F"
 
 
 def test_summarize_monthly_compensation_from_bookings_groups_by_analyst() -> None:

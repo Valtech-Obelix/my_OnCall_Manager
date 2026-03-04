@@ -60,7 +60,7 @@ class OpsGenieImportDialog(QDialog):
 
         self._import_button = QPushButton('Schichten importieren')
         self._import_button.clicked.connect(self._on_import_clicked)
-        self._close_button = QPushButton('Fertig')
+        self._close_button = QPushButton('Dialog schließen')
         self._close_button.clicked.connect(self.reject)
 
         button_layout = QHBoxLayout()

@@ -13,8 +13,11 @@ git push -u origin feature/<kurzer-name>
 Beispiel:
 
 ```bash
-git switch -c feature/UC-012-release-handover
-git push -u origin feature/UC-012-release-handover
+git fetch origin
+git switch main
+git pull origin main
+git switch -c feature/ UC-016_Export_der_Monatsliste nach CSV.
+git push -u origin feature/UC-015_Monatsdialog_Aggregation_pro_IA_für_die_Auszahlungsliste
 ```
 
 ## 2. Auf dem Branch arbeiten
@@ -31,15 +34,15 @@ git push
 git fetch origin
 git switch main
 git pull origin main
-git merge --no-ff feature/<kurzer-name>
+git merge --no-ff feature/UC-015_Monatsdialog_Aggregation_pro_IA_für_die_Auszahlungsliste -m "merge feature/UC-015_Monatsdialog_Aggregation_pro_IA_für_die_Auszahlungsliste"
 git push origin main
 ```
 
 ## 4. Branch aufraeumen (optional)
 
 ```bash
-git branch -d feature/<kurzer-name>
-git push origin --delete feature/<kurzer-name>
+git branch -d feature/UC-015_Monatsdialog_Aggregation_pro_IA_für_die_Auszahlungsliste
+git push origin --delete feature/UC-015_Monatsdialog_Aggregation_pro_IA_für_die_Auszahlungsliste
 ```
 
 ## Typische Fehler

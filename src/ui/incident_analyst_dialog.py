@@ -129,8 +129,8 @@ class IncidentAnalystDialog(QDialog):
         buttons2_group = QWidget()
         buttons2_layout = QHBoxLayout()
         buttons2_layout.setContentsMargins(0, 0, 0, 0)
-        self._close_button = QPushButton("Schließen")
-        self._close_button.clicked.connect(self.reject)
+        self._close_button = QPushButton("Dialog schließen")
+        self._close_button.clicked.connect(self.close)
         buttons2_layout.addStretch()
         buttons2_layout.addWidget(self._close_button)
         buttons2_group.setLayout(buttons2_layout)
@@ -385,4 +385,3 @@ class IncidentAnalystDialog(QDialog):
         self._refresh_table()
         self._clear_form()
         self._set_edit_fields_enabled(False)
-

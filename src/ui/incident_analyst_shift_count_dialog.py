@@ -53,6 +53,13 @@ class IncidentAnalystShiftCountDialog(QDialog):
         self._table.setHorizontalHeaderLabels(["Buchungsname", "Schichtanzahl"])
         layout.addWidget(self._table)
 
+        close_row = QHBoxLayout()
+        close_row.addStretch()
+        self._close_button = QPushButton("Dialog schließen")
+        self._close_button.clicked.connect(self.close)
+        close_row.addWidget(self._close_button)
+        layout.addLayout(close_row)
+
         self.setLayout(layout)
 
     def _load_initial(self):

@@ -102,6 +102,13 @@ class ShiftPlanViewDialog(QDialog):
         self._table.setEditTriggers(QTableWidget.NoEditTriggers)
         layout.addWidget(self._table)
 
+        close_row = QHBoxLayout()
+        close_row.addStretch()
+        self._close_button = QPushButton("Dialog schließen")
+        self._close_button.clicked.connect(self.close)
+        close_row.addWidget(self._close_button)
+        layout.addLayout(close_row)
+
         self.setLayout(layout)
 
     def _load_schedule_references(self):

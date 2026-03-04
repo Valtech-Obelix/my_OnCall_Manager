@@ -1,5 +1,6 @@
 import csv
 import re
+from decimal import Decimal, InvalidOperation
 from datetime import date, datetime, timedelta
 
 from src.domain.exceptions import DomainException
@@ -11,6 +12,29 @@ SHIFT_BOUNDARY_HOUR = 1
 
 
 class CompensationService:
+    def parse_booking_units(self, p_hours: str) -> int | None:
+        text = p_hours.strip()
+        if not text:
+            return None
+
+        normalized = text.replace(" ", "")
+        if "," in normalized and "." in normalized:
+            if normalized.rfind(",") > normalized.rfind("."):
+                normalized = normalized.replace(".", "").replace(",", ".")
+            else:
+                normalized = normalized.replace(",", "")
+        elif "," in normalized:
+            normalized = normalized.replace(",", ".")
+
+        try:
+            amount = Decimal(normalized)
+        except InvalidOperation:
+            return None
+
+        if amount != amount.to_integral_value():
+            return None
+        return int(amount)
+
     def determine_shift_slot(self, p_start_time_utc: str) -> str:
         start_local = parse_utc_timestamp(p_start_time_utc).astimezone(BERLIN)
         shifted_hour = (start_local.hour - SHIFT_BOUNDARY_HOUR) % 24
@@ -26,6 +50,35 @@ class CompensationService:
         if p_day.weekday() == 6 or self._is_bavaria_holiday(p_day):
             return "SUNDAY_OR_HOLIDAY"
         return "WEEKDAY"
+
+    def determine_expected_booking_task(
+        self,
+        p_oncall_location_id: str,
+        p_day: date,
+        p_slot: str,
+    ) -> str | None:
+        day_type = self.determine_day_type(p_day)
+        location_id = p_oncall_location_id.strip().upper()
+        slot = p_slot.strip().upper()
+
+        if slot not in ("F", "T", "S"):
+            raise DomainException(f"Unbekannter Schichtslot: {slot}")
+
+        if location_id == "GER":
+            if day_type == "WEEKDAY":
+                if slot in ("F", "S"):
+                    return "Rufbereitschaft Werktags"
+                return None
+            if day_type == "SATURDAY":
+                return "Rufbereitschaft Samstags und Betriebsurlaub"
+            return "Rufbereitschaft Sonn- und Feiertags"
+
+        if location_id == "IND":
+            if day_type == "WEEKDAY":
+                return "On Call Shift Working days"
+            return "On Call Shift Weekend and Holidays"
+
+        raise DomainException(f"Unbekannter Rufbereitschaftsstandort: {location_id}")
 
     def _calculate_amount_for_day_slot(
         self,
@@ -96,7 +149,7 @@ class CompensationService:
     ) -> list[dict[str, str]]:
         year = int(p_year)
         month = int(p_month)
-        entries: list[dict[str, str]] = []
+        aggregated: dict[tuple[str, str, str, str], dict[str, str | int]] = {}
 
         for file_path in booking_csv_files():
             with file_path.open("r", encoding="utf-8-sig", newline="") as csv_file:
@@ -112,9 +165,10 @@ class CompensationService:
                     continue
 
                 index_map = {name: idx for idx, name in enumerate(header)}
-                required = ["Date", "User", "Task - Task type", "Notes"]
+                required = ["Date", "User", "Task - Task type", "Notes", "Time (Hours)"]
                 if any(key not in index_map for key in required):
                     continue
+                task_name_index = index_map.get("Task")
 
                 for row in reader:
                     if len(row) < len(header):
@@ -136,15 +190,47 @@ class CompensationService:
                     if slot is None:
                         continue
 
-                    entries.append(
+                    units = self.parse_booking_units(row[index_map["Time (Hours)"]])
+                    if units is None or units == 0:
+                        continue
+
+                    user = row[index_map["User"]].strip()
+                    notes = row[index_map["Notes"]].strip()
+                    task_name = ""
+                    if task_name_index is not None and task_name_index < len(row):
+                        task_name = row[task_name_index].strip()
+
+                    key = (booking_date.isoformat(), user, slot, task_name.casefold())
+                    entry = aggregated.setdefault(
+                        key,
                         {
                             "booking_date": booking_date.isoformat(),
-                            "user": row[index_map["User"]].strip(),
+                            "user": user,
                             "slot": slot,
-                            "notes": row[index_map["Notes"]].strip(),
+                            "notes": notes,
+                            "task_name": task_name,
                             "source_file": file_path.name,
-                        }
+                            "units": 0,
+                        },
                     )
+                    entry["units"] = int(entry["units"]) + int(units)
+
+        entries: list[dict[str, str]] = []
+        for entry in aggregated.values():
+            units = int(entry["units"])
+            if units <= 0:
+                continue
+            for _ in range(units):
+                entries.append(
+                    {
+                        "booking_date": str(entry["booking_date"]),
+                        "user": str(entry["user"]),
+                        "slot": str(entry["slot"]),
+                        "notes": str(entry["notes"]),
+                        "task_name": str(entry["task_name"]),
+                        "source_file": str(entry["source_file"]),
+                    }
+                )
         return entries
 
     def summarize_monthly_compensation_from_bookings(

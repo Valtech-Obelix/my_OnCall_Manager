@@ -55,7 +55,7 @@ class LocationShiftDistributionDialog(QDialog):
 
         button_row = QHBoxLayout()
         button_row.addStretch()
-        close_button = QPushButton("Schließen")
+        close_button = QPushButton("Dialog schließen")
         close_button.clicked.connect(self.close)
         button_row.addWidget(close_button)
         layout.addLayout(button_row)

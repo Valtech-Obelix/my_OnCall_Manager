@@ -24,11 +24,13 @@ class MonthlyCompensationDialog(QDialog):
     def __init__(self, p_application, p_parent=None):
         super().__init__(p_parent)
         self._application = p_application
+        self._ui_ready = False
         self._total_label = QLabel("Gesamtsumme: 0 EUR")
         self._current_year = 0
         self._current_month = 0
         self._current_location_filter = "GER"
         self._setup_ui()
+        self._ui_ready = True
         self._set_default_month()
         self._refresh_table()
 
@@ -69,6 +71,8 @@ class MonthlyCompensationDialog(QDialog):
         self._table = QTableWidget()
         self._table.setAlternatingRowColors(True)
         self._table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self._table.setSelectionBehavior(QTableWidget.SelectRows)
+        self._table.setSelectionMode(QTableWidget.SingleSelection)
         self._table.setColumnCount(6)
         self._table.setHorizontalHeaderLabels(
             [
@@ -105,7 +109,7 @@ class MonthlyCompensationDialog(QDialog):
 
         button_row = QHBoxLayout()
         button_row.addStretch()
-        close_button = QPushButton("Schließen")
+        close_button = QPushButton("Dialog schließen")
         close_button.clicked.connect(self.close)
         button_row.addWidget(close_button)
         layout.addLayout(button_row)
@@ -143,8 +147,16 @@ class MonthlyCompensationDialog(QDialog):
             self._location_combo.addItem("Indien (IND)", "IND")
 
     def _refresh_table(self):
+        if not self._ui_ready:
+            return
+        if not hasattr(self, "_table") or not hasattr(self, "_detail_table"):
+            return
+
         year = int(self._year_input.value())
-        month = int(self._month_combo.currentData())
+        month_data = self._month_combo.currentData()
+        if month_data is None:
+            return
+        month = int(month_data)
         location_filter = str(self._location_combo.currentData() or "GER")
         self._current_year = year
         self._current_month = month
@@ -155,6 +167,7 @@ class MonthlyCompensationDialog(QDialog):
             location_filter,
         )
 
+        self._table.blockSignals(True)
         self._table.setRowCount(len(rows))
         total = 0
         for row_index, row_data in enumerate(rows):
@@ -175,18 +188,21 @@ class MonthlyCompensationDialog(QDialog):
                 self._table.setItem(row_index, col_index, item)
 
         self._table.resizeColumnsToContents()
+        self._table.clearSelection()
+        self._table.blockSignals(False)
         self._total_label.setText(f"Gesamtsumme: {total} EUR")
-        if len(rows) > 0:
-            self._table.selectRow(0)
-        else:
-            self._detail_table.setRowCount(0)
+        self._detail_table.setRowCount(0)
 
     def _on_summary_selection_changed(self):
-        selected_items = self._table.selectedItems()
-        if not selected_items:
+        row_index = self._table.currentRow()
+        if row_index < 0:
             self._detail_table.setRowCount(0)
             return
-        analyst_id = selected_items[0].data(Qt.UserRole)
+        row_item = self._table.item(row_index, 0)
+        if row_item is None:
+            self._detail_table.setRowCount(0)
+            return
+        analyst_id = row_item.data(Qt.UserRole)
         if not analyst_id:
             self._detail_table.setRowCount(0)
             return
