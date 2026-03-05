@@ -15,8 +15,10 @@ from    src.services.opsgenie_service                       import  OpsGenieServ
 from    src.services.compensation_service                   import  CompensationService
 from    src.infrastructure.opsgenie_client                  import  OpsGenieClient
 from    src.infrastructure.oncall_location_repository       import  OnCallLocationRepository
+from    src.infrastructure.gehaltsgruppe_repository         import  GehaltsgruppeRepository
 from    src.infrastructure.secret_loader                    import  load_opsgenie_api_key
 from    src.infrastructure.runtime_paths                    import  user_booking_data_dir
+from    src.services.gehaltsgruppe_service                 import  GehaltsgruppeService
 
 class Application:
 
@@ -50,6 +52,12 @@ class Application:
         self._incident_analyst_service = IncidentAnalystService(self._analyst_repository)
         self._oncall_location_repository = OnCallLocationRepository(
             self._database.get_connection()
+        )
+        self._gehaltsgruppe_repository = GehaltsgruppeRepository(
+            self._database.get_connection()
+        )
+        self._gehaltsgruppe_service = GehaltsgruppeService(
+            self._gehaltsgruppe_repository
         )
 
         # Ref: UC-004 – vollständige Verdrahtung
@@ -250,3 +258,48 @@ class Application:
     # Ref: UC-011 – Rufbereitschaftsstandorte
     def delete_oncall_location(self, p_id: str) -> None:
         self._oncall_location_repository.delete(p_id)
+
+    # Ref: UC-017 – Gehaltsgruppen verwalten
+    def create_gehaltsgruppe(
+        self,
+        p_bezeichnung: str,
+        p_betrag: float,
+        p_gueltig_ab: date,
+    ):
+        return self._gehaltsgruppe_service.create(
+            p_bezeichnung=p_bezeichnung,
+            p_betrag=p_betrag,
+            p_gueltig_ab=p_gueltig_ab,
+        )
+
+    # Ref: UC-017 – Betragshistorie pflegen
+    def update_gehaltsgruppe_betrag(
+        self,
+        p_group_id: int,
+        p_betrag: float,
+        p_gueltig_ab: date,
+    ) -> None:
+        self._gehaltsgruppe_service.update_betrag(
+            p_group_id=p_group_id,
+            p_betrag=p_betrag,
+            p_gueltig_ab=p_gueltig_ab,
+        )
+
+    # Ref: UC-017 – Stichtagsabfrage
+    def get_gehaltsgruppe_betrag_am_stichtag(
+        self,
+        p_group_id: int,
+        p_stichtag: date,
+    ) -> float | None:
+        return self._gehaltsgruppe_service.get_betrag_am_stichtag(
+            p_group_id=p_group_id,
+            p_stichtag=p_stichtag,
+        )
+
+    # Ref: UC-017 – Gehaltsgruppen anzeigen
+    def get_gehaltsgruppen(self):
+        return self._gehaltsgruppe_service.get_all()
+
+    # Ref: UC-017 – Betragshistorie anzeigen
+    def get_gehaltsgruppe_betraege(self, p_group_id: int):
+        return self._gehaltsgruppe_service.get_betraege(p_group_id)

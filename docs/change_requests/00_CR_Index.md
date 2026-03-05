@@ -28,6 +28,7 @@
 | CR-024 | Gegenbuchungen netto verrechnen (Vergleich und Monatsabrechnung) | umgesetzt    | UC-016/015 | hoch      | 2026-03-05  | 2026-03-05   | [CR-024](./CR-024_Gegenbuchungen_Nettoverrechnung_in_Vergleich_und_Auszahlung.md) |
 | CR-025 | Einheitliche Buttonleiste mit „Dialog schließen“ | umgesetzt    | UC-001/005/008/009/011/012/013/015 | mittel    | 2026-03-05  | 2026-03-05   | [CR-025](./CR-025_Einheitliche_Buttonleiste_Dialog_schliessen.md) |
 | CR-026 | Monatsabrechnung: Überstunden nach Task und Standort ausweisen | umgesetzt    | UC-015   | hoch      | 2026-03-05  | 2026-03-05   | [CR-026](./CR-026_Monatsabrechnung_Ueberstunden_nach_Task_und_Standort.md) |
+| CR-027 | Gehaltsgruppen mit Betragshistorie und Stichtagsabfrage | umgesetzt    | UC-017   | hoch      | 2026-03-05  | 2026-03-05   | [CR-027](./CR-027_Gehaltsgruppen_mit_Betragshistorie_und_Stichtagsabfrage.md) |
 
 ## Statusdefinition
 

@@ -104,6 +104,34 @@ class Database:
             '''
         )
 
+        # Ref: UC-017 v0.1 – Gehaltsgruppen mit historisierten Betraegen
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS gehaltsgruppe (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bezeichnung TEXT NOT NULL UNIQUE CHECK (length(trim(bezeichnung)) > 0)
+            )
+            '''
+        )
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS gehaltsgruppe_betrag (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                gehaltsgruppe_id INTEGER NOT NULL,
+                betrag REAL NOT NULL CHECK (betrag >= 0),
+                gueltig_ab TEXT NOT NULL,
+                FOREIGN KEY (gehaltsgruppe_id) REFERENCES gehaltsgruppe(id) ON DELETE CASCADE,
+                UNIQUE (gehaltsgruppe_id, gueltig_ab)
+            )
+            '''
+        )
+        cursor.execute(
+            '''
+            CREATE INDEX IF NOT EXISTS idx_gehaltsgruppe_betrag_lookup
+            ON gehaltsgruppe_betrag (gehaltsgruppe_id, gueltig_ab DESC)
+            '''
+        )
+
         # Ref: UC-011 v0.1 – Rufbereitschaftsstandorte
         cursor.execute(
             '''

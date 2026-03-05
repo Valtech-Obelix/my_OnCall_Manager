@@ -105,3 +105,22 @@ def test_initialize_schema_creates_rufbereitschaftsstandort_table(tmp_path) -> N
     assert ger == ("GER", "Deutschland")
 
     database.close()
+
+
+def test_initialize_schema_creates_gehaltsgruppe_tables(tmp_path) -> None:
+    db_path = tmp_path / "gehaltsgruppe_schema.db"
+    database = Database(p_db_path=db_path)
+    database.initialize_schema()
+    connection = database.get_connection()
+
+    group_table_info = connection.execute("PRAGMA table_info(gehaltsgruppe)").fetchall()
+    group_columns = [row[1] for row in group_table_info]
+    assert group_columns == ["id", "bezeichnung"]
+
+    amount_table_info = connection.execute(
+        "PRAGMA table_info(gehaltsgruppe_betrag)"
+    ).fetchall()
+    amount_columns = [row[1] for row in amount_table_info]
+    assert amount_columns == ["id", "gehaltsgruppe_id", "betrag", "gueltig_ab"]
+
+    database.close()
