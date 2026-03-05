@@ -27,7 +27,8 @@ class IncidentAnalyst:
         p_ende_datum                                  : date | None = None,
         p_buchungsname                                : str | None = None,
         p_opsgenie_id                                 : str | None = None,
-        p_oncall_location_id                          : str = "GER"
+        p_oncall_location_id                          : str = "GER",
+        p_mitarbeitertyp                              : str = "INCIDENT_ANALYST",
     ):
         # Ref: UC-001 v0.2 – neue Attribute
         self.id                                       = p_id
@@ -36,12 +37,13 @@ class IncidentAnalyst:
         if p_buchungsname:
             self.buchungsname = p_buchungsname.strip()
         else:
-            self.buchungsname = f"{self.vornamen} {self.nachname}".strip()
+            self.buchungsname = f"{self.nachname}, {self.vornamen}".strip()
         self.email                                    = p_email.strip()
         self.opsgenie_id                              = (
             p_opsgenie_id.strip() if p_opsgenie_id else None
         )
         self.oncall_location_id                       = p_oncall_location_id.strip().upper()
+        self.mitarbeitertyp                           = p_mitarbeitertyp.strip().upper()
         self.start_datum                              = p_start_datum
         self.ende_datum                               = p_ende_datum
 
@@ -68,6 +70,9 @@ class IncidentAnalyst:
 
         if len(self.oncall_location_id) != 3:
             raise DomainException('Rufbereitschaftsstandort muss genau 3 Zeichen haben.')
+
+        if self.mitarbeitertyp not in {"INCIDENT_ANALYST", "PRODUCT_OWNER", "SONSTIGE"}:
+            raise DomainException('Ungueltiger Mitarbeitertyp.')
 
         if self.ende_datum and self.ende_datum < self.start_datum:
             raise DomainException('Enddatum darf nicht vor Startdatum liegen.')

@@ -29,6 +29,11 @@
 | CR-025 | Einheitliche Buttonleiste mit „Dialog schließen“ | umgesetzt    | UC-001/005/008/009/011/012/013/015 | mittel    | 2026-03-05  | 2026-03-05   | [CR-025](./CR-025_Einheitliche_Buttonleiste_Dialog_schliessen.md) |
 | CR-026 | Monatsabrechnung: Überstunden nach Task und Standort ausweisen | umgesetzt    | UC-015   | hoch      | 2026-03-05  | 2026-03-05   | [CR-026](./CR-026_Monatsabrechnung_Ueberstunden_nach_Task_und_Standort.md) |
 | CR-027 | Gehaltsgruppen mit Betragshistorie und Stichtagsabfrage | umgesetzt    | UC-017   | hoch      | 2026-03-05  | 2026-03-05   | [CR-027](./CR-027_Gehaltsgruppen_mit_Betragshistorie_und_Stichtagsabfrage.md) |
+| CR-028 | Mitarbeitertyp im Mitarbeiterdialog und Datenmodell | umgesetzt    | UC-018   | hoch      | 2026-03-05  | 2026-03-05   | [CR-028](./CR-028_Mitarbeitertyp_im_Mitarbeiterdialog_und_Datenmodell.md) |
+| CR-029 | Benennung Menüpunkt Verwaltung im Genitiv | umgesetzt    | UC-018   | mittel    | 2026-03-05  | 2026-03-05   | [CR-029](./CR-029_Benennung_Menuepunkt_Verwaltung_im_Genitiv.md) |
+| CR-030 | Buchungsname als Nachname, Vorname | umgesetzt    | UC-001/018 | hoch      | 2026-03-05  | 2026-03-05   | [CR-030](./CR-030_Buchungsname_als_Nachname_Vorname.md) |
+| CR-031 | Bestaetigungsdialog Loeschen mit deutschen Buttontexten | umgesetzt    | UC-018   | mittel    | 2026-03-05  | 2026-03-05   | [CR-031](./CR-031_Bestaetigungsdialog_Loeschen_mit_deutschen_Buttontexten.md) |
+| CR-032 | Neu-Aktion leert Form nach abgebrochenem Loeschen | umgesetzt    | UC-018   | mittel    | 2026-03-05  | 2026-03-05   | [CR-032](./CR-032_Neu_Aktion_leert_Form_nach_abgebrochenem_Loeschen.md) |
 
 ## Statusdefinition
 

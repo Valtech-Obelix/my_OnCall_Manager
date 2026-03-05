@@ -15,7 +15,7 @@ def test_generates_buchungsname_when_missing() -> None:
         p_start_datum=date(2026, 1, 1),
     )
 
-    assert analyst.buchungsname == "Max Mustermann"
+    assert analyst.buchungsname == "Mustermann, Max"
 
 
 def test_rejects_invalid_email() -> None:
@@ -39,3 +39,15 @@ def test_defaults_oncall_location_to_ger() -> None:
     )
 
     assert analyst.oncall_location_id == "GER"
+
+
+def test_defaults_mitarbeitertyp_to_incident_analyst() -> None:
+    analyst = IncidentAnalyst(
+        p_id=None,
+        p_vornamen="Erika",
+        p_nachname="Muster",
+        p_email="erika@example.com",
+        p_start_datum=date(2026, 1, 1),
+    )
+
+    assert analyst.mitarbeitertyp == "INCIDENT_ANALYST"

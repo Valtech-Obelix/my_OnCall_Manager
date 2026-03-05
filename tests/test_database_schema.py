@@ -43,13 +43,14 @@ def test_initialize_schema_adds_opsgenie_id_without_data_loss(tmp_path) -> None:
 
     row = migrated_connection.execute(
         """
-        SELECT vornamen, nachname, buchungsname, email, start_datum, ende_datum, opsgenie_id, oncall_location_id
+        SELECT vornamen, nachname, buchungsname, email, start_datum, ende_datum, opsgenie_id, oncall_location_id, mitarbeitertyp
         FROM incident_analyst
         """
     ).fetchone()
 
     assert "opsgenie_id" in column_names
     assert "oncall_location_id" in column_names
+    assert "mitarbeitertyp" in column_names
     assert row == (
         "Erika",
         "Mustermann",
@@ -59,6 +60,7 @@ def test_initialize_schema_adds_opsgenie_id_without_data_loss(tmp_path) -> None:
         None,
         None,
         "GER",
+        "INCIDENT_ANALYST",
     )
 
     database.close()

@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 from src.domain.exceptions import DomainException
 
 
-APP_TITLE = "Verwaltung der Incident Analysten"
+APP_TITLE = "Mitarbeiterverwaltung"
 
 
 class IncidentAnalystDialog(QDialog):
@@ -57,10 +57,11 @@ class IncidentAnalystDialog(QDialog):
         display_layout.addLayout(filter_layout)
 
         self._table = QTableWidget()
-        self._table.setColumnCount(8)
+        self._table.setColumnCount(9)
         self._table.setHorizontalHeaderLabels(
             [
                 "Buchungsname",
+                "Typ",
                 "Vorname",
                 "Nachname",
                 "E-Mail",
@@ -84,6 +85,10 @@ class IncidentAnalystDialog(QDialog):
         self._nachname_input = QLineEdit()
         self._email_input = QLineEdit()
         self._opsgenie_id_input = QLineEdit()
+        self._mitarbeitertyp_combo = QComboBox()
+        self._mitarbeitertyp_combo.addItem("Incident Analyst", "INCIDENT_ANALYST")
+        self._mitarbeitertyp_combo.addItem("Product Owner", "PRODUCT_OWNER")
+        self._mitarbeitertyp_combo.addItem("Sonstige", "SONSTIGE")
         self._location_combo = QComboBox()
         self._location_combo.setEditable(False)
         self._start_input = QDateEdit()
@@ -96,6 +101,7 @@ class IncidentAnalystDialog(QDialog):
         edit_layout.addRow("Vorname:", self._vorname_input)
         edit_layout.addRow("Nachname:", self._nachname_input)
         edit_layout.addRow("E-Mail:", self._email_input)
+        edit_layout.addRow("Mitarbeitertyp:", self._mitarbeitertyp_combo)
         edit_layout.addRow("OpsGenie ID:", self._opsgenie_id_input)
         edit_layout.addRow("Standort:", self._location_combo)
         edit_layout.addRow("Startdatum:", self._start_input)
@@ -154,6 +160,7 @@ class IncidentAnalystDialog(QDialog):
         for row_index, analyst in enumerate(filtered):
             row_items = [
                 analyst.buchungsname,
+                self._display_mitarbeitertyp(analyst.mitarbeitertyp),
                 analyst.vornamen,
                 analyst.nachname,
                 analyst.email,
@@ -197,11 +204,16 @@ class IncidentAnalystDialog(QDialog):
         self._nachname_input.clear()
         self._email_input.clear()
         self._opsgenie_id_input.clear()
+        idx = self._mitarbeitertyp_combo.findData("INCIDENT_ANALYST")
+        self._mitarbeitertyp_combo.setCurrentIndex(max(idx, 0))
         self._load_oncall_locations()
         self._start_input.setDate(QDate.currentDate())
         self._end_enabled_checkbox.setChecked(False)
         self._end_input.setDate(QDate.currentDate())
+        self._table.blockSignals(True)
         self._table.clearSelection()
+        self._table.setCurrentCell(-1, -1)
+        self._table.blockSignals(False)
         self._set_primary_action_button(self._new_button)
 
     def _set_edit_fields_enabled(self, p_enabled: bool):
@@ -209,6 +221,7 @@ class IncidentAnalystDialog(QDialog):
         self._nachname_input.setEnabled(p_enabled)
         self._email_input.setEnabled(p_enabled)
         self._opsgenie_id_input.setEnabled(p_enabled)
+        self._mitarbeitertyp_combo.setEnabled(p_enabled)
         self._location_combo.setEnabled(p_enabled)
         self._start_input.setEnabled(p_enabled)
         self._end_enabled_checkbox.setEnabled(p_enabled)
@@ -253,6 +266,8 @@ class IncidentAnalystDialog(QDialog):
         self._vorname_input.setText(analyst.vornamen)
         self._nachname_input.setText(analyst.nachname)
         self._email_input.setText(analyst.email)
+        type_index = self._mitarbeitertyp_combo.findData(analyst.mitarbeitertyp)
+        self._mitarbeitertyp_combo.setCurrentIndex(max(type_index, 0))
         self._opsgenie_id_input.setText(analyst.opsgenie_id or "")
         self._load_oncall_locations()
         loc_idx = self._location_combo.findText(analyst.oncall_location_id)
@@ -321,6 +336,7 @@ class IncidentAnalystDialog(QDialog):
                     p_ende_datum=end_date,
                     p_opsgenie_id=self._opsgenie_id_input.text().strip() or None,
                     p_oncall_location_id=self._location_combo.currentText(),
+                    p_mitarbeitertyp=str(self._mitarbeitertyp_combo.currentData()),
                 )
             else:
                 self._application.add_incident_analyst(
@@ -330,6 +346,7 @@ class IncidentAnalystDialog(QDialog):
                     p_start_datum=start_date,
                     p_ende_datum=end_date,
                     p_oncall_location_id=self._location_combo.currentText(),
+                    p_mitarbeitertyp=str(self._mitarbeitertyp_combo.currentData()),
                 )
         except DomainException as e:
             QMessageBox.warning(self, APP_TITLE, str(e))
@@ -347,19 +364,30 @@ class IncidentAnalystDialog(QDialog):
             QMessageBox.information(self, APP_TITLE, "Bitte zuerst einen Eintrag auswählen.")
             return
 
-        reply = QMessageBox.question(
-            self,
-            APP_TITLE,
-            "Ausgewählten Incident Analyst wirklich löschen?",
-            QMessageBox.Yes | QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
+        confirmation = QMessageBox(self)
+        confirmation.setWindowTitle(APP_TITLE)
+        confirmation.setText("Ausgewaehlten Mitarbeiter wirklich loeschen?")
+        confirmation.setIcon(QMessageBox.Question)
+        yes_button = confirmation.addButton("Ja", QMessageBox.YesRole)
+        no_button = confirmation.addButton("Nein", QMessageBox.NoRole)
+        confirmation.setDefaultButton(no_button)
+        confirmation.exec()
+
+        if confirmation.clickedButton() is not yes_button:
             return
 
         self._application.delete_incident_analyst(self._selected_id)
         self._refresh_table()
         self._clear_form()
         self._set_edit_fields_enabled(False)
+
+    def _display_mitarbeitertyp(self, p_type: str) -> str:
+        mapping = {
+            "INCIDENT_ANALYST": "Incident Analyst",
+            "PRODUCT_OWNER": "Product Owner",
+            "SONSTIGE": "Sonstige",
+        }
+        return mapping.get((p_type or "").strip().upper(), str(p_type))
 
     def _on_deactivate_clicked(self):
         if self._selected_id is None:

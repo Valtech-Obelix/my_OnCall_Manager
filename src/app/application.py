@@ -84,7 +84,8 @@ class Application:
         p_email: str,
         p_start_datum: date,
         p_ende_datum: date | None = None,
-        p_oncall_location_id: str = "GER"
+        p_oncall_location_id: str = "GER",
+        p_mitarbeitertyp: str = "INCIDENT_ANALYST",
     ) -> IncidentAnalyst:
 
         return self._incident_analyst_service.create(
@@ -93,7 +94,8 @@ class Application:
             p_email,
             p_start_datum,
             p_ende_datum,
-            p_oncall_location_id
+            p_oncall_location_id,
+            p_mitarbeitertyp,
         )
 
     # Ref: UC-007 – Incident Analyst bearbeiten
@@ -106,7 +108,8 @@ class Application:
         p_start_datum: date,
         p_ende_datum: date | None = None,
         p_opsgenie_id: str | None = None,
-        p_oncall_location_id: str = "GER"
+        p_oncall_location_id: str = "GER",
+        p_mitarbeitertyp: str = "INCIDENT_ANALYST",
     ) -> IncidentAnalyst:
         return self._incident_analyst_service.update(
             p_id=p_id,
@@ -116,7 +119,8 @@ class Application:
             p_start_datum=p_start_datum,
             p_ende_datum=p_ende_datum,
             p_opsgenie_id=p_opsgenie_id,
-            p_oncall_location_id=p_oncall_location_id
+            p_oncall_location_id=p_oncall_location_id,
+            p_mitarbeitertyp=p_mitarbeitertyp,
         )
 
     def run(self):

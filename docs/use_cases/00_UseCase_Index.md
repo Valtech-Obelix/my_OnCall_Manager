@@ -19,6 +19,7 @@
 | UC-015 | Monatsdialog: Aggregation pro IA für die Auszahlungsliste | abgeschlossen | 0.1     |
 | UC-016 | Schichtplan-vs.-Buchungen um Task-Prüfung erweitern | abgeschlossen | 0.1     |
 | UC-017 | Gehaltsgruppen verwalten              | abgeschlossen | 0.1     |
+| UC-018 | Einfuehrung von Mitarbeitertypen      | abgeschlossen | 0.1     |
 
 ## Verknüpfte Änderungshistorie
 

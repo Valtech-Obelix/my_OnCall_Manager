@@ -41,6 +41,7 @@ class _FakeRepository:
             p_ende_datum=p_ende_datum,
             p_opsgenie_id=analyst.opsgenie_id,
             p_oncall_location_id=analyst.oncall_location_id,
+            p_mitarbeitertyp=analyst.mitarbeitertyp,
         )
 
 
@@ -57,6 +58,7 @@ def test_update_changes_incident_analyst_data() -> None:
         p_ende_datum=None,
         p_opsgenie_id="325b3fbf-cbb2-4724-abe1-4fb488655ede",
         p_oncall_location_id="USA",
+        p_mitarbeitertyp="PRODUCT_OWNER",
     )
 
     assert updated.vornamen == "Thomas"
@@ -64,6 +66,7 @@ def test_update_changes_incident_analyst_data() -> None:
     assert updated.email == "thomas.ruf@example.com"
     assert updated.opsgenie_id == "325b3fbf-cbb2-4724-abe1-4fb488655ede"
     assert updated.oncall_location_id == "USA"
+    assert updated.mitarbeitertyp == "PRODUCT_OWNER"
     assert updated.start_datum == date(2025, 2, 1)
 
 
