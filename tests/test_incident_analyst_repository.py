@@ -17,6 +17,7 @@ def _create_repository() -> IncidentAnalystRepository:
             email TEXT NOT NULL UNIQUE,
             opsgenie_id TEXT,
             oncall_location_id TEXT NOT NULL DEFAULT 'GER' CHECK (length(oncall_location_id) = 3),
+            mitarbeitertyp TEXT NOT NULL DEFAULT 'INCIDENT_ANALYST' CHECK (mitarbeitertyp IN ('INCIDENT_ANALYST', 'PRODUCT_OWNER', 'SONSTIGE')),
             start_datum TEXT NOT NULL,
             ende_datum TEXT
         )
@@ -42,8 +43,9 @@ def test_add_and_get_all_roundtrip() -> None:
 
     analysts = repository.get_all()
     assert len(analysts) == 1
-    assert analysts[0].buchungsname == "Erika Mustermann"
+    assert analysts[0].buchungsname == "Mustermann, Erika"
     assert analysts[0].oncall_location_id == "GER"
+    assert analysts[0].mitarbeitertyp == "INCIDENT_ANALYST"
     assert analysts[0].start_datum == date(2025, 2, 1)
 
 
@@ -125,6 +127,7 @@ def test_update_persists_changed_fields() -> None:
     assert updated.email == "thomas.ruf@example.com"
     assert updated.opsgenie_id == "325b3fbf-cbb2-4724-abe1-4fb488655ede"
     assert updated.oncall_location_id == "USA"
+    assert updated.mitarbeitertyp == "INCIDENT_ANALYST"
     assert updated.start_datum == date(2025, 2, 1)
     assert updated.ende_datum == date(2025, 12, 31)
 

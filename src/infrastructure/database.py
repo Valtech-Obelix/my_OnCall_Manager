@@ -44,6 +44,8 @@ class Database:
                 email           TEXT NOT NULL UNIQUE,
                 opsgenie_id     TEXT,
                 oncall_location_id TEXT NOT NULL DEFAULT 'GER' CHECK (length(oncall_location_id) = 3),
+                mitarbeitertyp  TEXT NOT NULL DEFAULT 'INCIDENT_ANALYST'
+                                    CHECK (mitarbeitertyp IN ('INCIDENT_ANALYST', 'PRODUCT_OWNER', 'SONSTIGE')),
                 start_datum     TEXT NOT NULL,
                 ende_datum      TEXT
             )
@@ -53,6 +55,7 @@ class Database:
         # Ref: CR-007 – bestehende Daten erhalten und OpsGenieId nachrüsten
         self._ensure_incident_analyst_opsgenie_id_column()
         self._ensure_incident_analyst_oncall_location_id_column()
+        self._ensure_incident_analyst_mitarbeitertyp_column()
 
         # Ref: UC-004 v0.1 – Shift Tabelle
         cursor.execute(
@@ -169,6 +172,22 @@ class Database:
                 "UPDATE incident_analyst "
                 "SET oncall_location_id = 'GER' "
                 "WHERE oncall_location_id IS NULL OR trim(oncall_location_id) = ''"
+            )
+
+    def _ensure_incident_analyst_mitarbeitertyp_column(self):
+        cursor = self._connection.cursor()
+        cursor.execute("PRAGMA table_info(incident_analyst)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "mitarbeitertyp" not in columns:
+            cursor.execute(
+                "ALTER TABLE incident_analyst "
+                "ADD COLUMN mitarbeitertyp TEXT NOT NULL DEFAULT 'INCIDENT_ANALYST' "
+                "CHECK (mitarbeitertyp IN ('INCIDENT_ANALYST', 'PRODUCT_OWNER', 'SONSTIGE'))"
+            )
+            cursor.execute(
+                "UPDATE incident_analyst "
+                "SET mitarbeitertyp = 'INCIDENT_ANALYST' "
+                "WHERE mitarbeitertyp IS NULL OR trim(mitarbeitertyp) = ''"
             )
 
     def _ensure_default_oncall_location(self):

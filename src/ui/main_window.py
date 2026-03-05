@@ -21,12 +21,12 @@ from    src.ui.gehaltsgruppe_dialog                        import  Gehaltsgruppe
 
 
 APP_TITLE                               =   'my_OnCall_Manager'
-ACTION_MANAGE_ANALYSTS                  =   'Incident Analysten verwalten'
+ACTION_MANAGE_ANALYSTS                  =   'der Mitarbeiter'
 ACTION_IMPORT_SHIFTS                    =   'OpsGenie Schichten importieren'
 ACTION_VIEW_SHIFT_PLAN                  =   'Schichtplan anzeigen'
 ACTION_VIEW_IA_SHIFT_COUNTS             =   'Aktive IA Schichtanzahl anzeigen'
-ACTION_VIEW_ONCALL_LOCATIONS            =   'Rufbereitschaftsstandorte'
-ACTION_MANAGE_GEHALTSGRUPPEN            =   'Gehaltsgruppen'
+ACTION_VIEW_ONCALL_LOCATIONS            =   'der Rufbereitschaftsstandorte'
+ACTION_MANAGE_GEHALTSGRUPPEN            =   'der Gehaltsgruppen'
 ACTION_COMPARE_SHIFTS_BOOKINGS          =   'Schichtplan vs. Buchungen vergleichen'
 ACTION_LOCATION_SHIFT_DISTRIBUTION      =   'Schichtverteilung nach Standort'
 ACTION_MONTHLY_COMPENSATION             =   'Monatsabrechnung IA-Auszahlung'
