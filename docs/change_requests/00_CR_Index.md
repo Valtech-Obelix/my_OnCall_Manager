@@ -23,6 +23,11 @@
 | CR-019 | Umbau IA-Erfassungsoberfläche analog Standortdialog | umgesetzt    | UC-001/2/3/7/11 | hoch      | 2026-03-01  | 2026-03-01   | [CR-019](./CR-019_Umbau_IA_Dialog_analog_Standortdialog.md) |
 | CR-020 | Vergleichsdialog Schichtplan vs. Buchungen (Wochenansicht) | umgesetzt    | UC-012   | hoch      | 2026-03-01  | 2026-03-01   | [CR-020](./CR-020_Vergleichsdialog_Schichtplan_vs_Buchungen.md) |
 | CR-021 | Deduplizierung von OpsGenie-Schichten pro Slot (inkl. Altbestand) | umgesetzt    | UC-004/012 | hoch      | 2026-03-02  | 2026-03-02   | [CR-021](./CR-021_Deduplizierung_OpsGenie_Shifts_pro_Slot.md) |
+| CR-022 | Task-Validierung im Vergleichsdialog inkl. Fehlergründe | umgesetzt    | UC-016/012 | hoch      | 2026-03-05  | 2026-03-05   | [CR-022](./CR-022_Taskvalidierung_im_Vergleichsdialog.md) |
+| CR-023 | Vergleichsdialog: Kalenderwoche, Autoaktualisierung und Schließen-Button | umgesetzt    | UC-016/012 | mittel    | 2026-03-05  | 2026-03-05   | [CR-023](./CR-023_Vergleichsdialog_Bedienung_KW_und_Autoaktualisierung.md) |
+| CR-024 | Gegenbuchungen netto verrechnen (Vergleich und Monatsabrechnung) | umgesetzt    | UC-016/015 | hoch      | 2026-03-05  | 2026-03-05   | [CR-024](./CR-024_Gegenbuchungen_Nettoverrechnung_in_Vergleich_und_Auszahlung.md) |
+| CR-025 | Einheitliche Buttonleiste mit „Dialog schließen“ | umgesetzt    | UC-001/005/008/009/011/012/013/015 | mittel    | 2026-03-05  | 2026-03-05   | [CR-025](./CR-025_Einheitliche_Buttonleiste_Dialog_schliessen.md) |
+| CR-026 | Monatsabrechnung: Überstunden nach Task und Standort ausweisen | umgesetzt    | UC-015   | hoch      | 2026-03-05  | 2026-03-05   | [CR-026](./CR-026_Monatsabrechnung_Ueberstunden_nach_Task_und_Standort.md) |
 
 ## Statusdefinition
 

@@ -172,8 +172,13 @@ class Application:
             p_year=p_year,
             p_month=p_month,
         )
+        overtime_entries = self._compensation_service.load_monthly_overtime_entries(
+            p_year=p_year,
+            p_month=p_month,
+        )
         return self._compensation_service.summarize_monthly_compensation_from_bookings(
             p_booking_entries=booking_entries,
+            p_overtime_entries=overtime_entries,
             p_analysts=analysts,
             p_location_filter=p_location_filter,
         )
@@ -190,8 +195,13 @@ class Application:
             p_year=p_year,
             p_month=p_month,
         )
+        overtime_entries = self._compensation_service.load_monthly_overtime_entries(
+            p_year=p_year,
+            p_month=p_month,
+        )
         return self._compensation_service.build_booking_compensation_details(
             p_booking_entries=booking_entries,
+            p_overtime_entries=overtime_entries,
             p_analysts=analysts,
             p_analyst_id=p_analyst_id,
             p_location_filter=p_location_filter,

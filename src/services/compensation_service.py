@@ -9,10 +9,14 @@ from src.infrastructure.timezone_utils import BERLIN, parse_utc_timestamp
 
 
 SHIFT_BOUNDARY_HOUR = 1
+GER_OT_25_TASK = "Arbeit (25%) WT (6-9, 17-20) Sa (6-20)"
+GER_OT_50_TASK = "Arbeit (50%) WT (20-6), Sa (20-6), So & FT"
+IND_OT_MOSAT_TASK = "Work On Call Shift (Mo-Sat)"
+IND_OT_SUN_TASK = "Work On Call Shift (Sunday)"
 
 
 class CompensationService:
-    def parse_booking_units(self, p_hours: str) -> int | None:
+    def parse_booking_hours(self, p_hours: str) -> Decimal | None:
         text = p_hours.strip()
         if not text:
             return None
@@ -30,10 +34,45 @@ class CompensationService:
             amount = Decimal(normalized)
         except InvalidOperation:
             return None
+        return amount
+
+    def parse_booking_units(self, p_hours: str) -> int | None:
+        amount = self.parse_booking_hours(p_hours)
+        if amount is None:
+            return None
 
         if amount != amount.to_integral_value():
             return None
         return int(amount)
+
+    def _normalize_task_name(self, p_name: str) -> str:
+        return " ".join(p_name.casefold().split())
+
+    def _is_overtime_task(self, p_task_name: str) -> bool:
+        normalized = self._normalize_task_name(p_task_name)
+        return normalized in {
+            self._normalize_task_name(GER_OT_25_TASK),
+            self._normalize_task_name(GER_OT_50_TASK),
+            self._normalize_task_name(IND_OT_MOSAT_TASK),
+            self._normalize_task_name(IND_OT_SUN_TASK),
+        }
+
+    def _overtime_bucket_for_task(self, p_task_name: str) -> str | None:
+        normalized = self._normalize_task_name(p_task_name)
+        mapping = {
+            self._normalize_task_name(GER_OT_25_TASK): "GER_25",
+            self._normalize_task_name(GER_OT_50_TASK): "GER_50",
+            self._normalize_task_name(IND_OT_MOSAT_TASK): "IND_MO_SA",
+            self._normalize_task_name(IND_OT_SUN_TASK): "IND_SO",
+        }
+        return mapping.get(normalized)
+
+    def _format_hours(self, p_hours: Decimal) -> str:
+        normalized = p_hours.normalize()
+        text = format(normalized, "f")
+        if "." in text:
+            text = text.rstrip("0").rstrip(".")
+        return text or "0"
 
     def determine_shift_slot(self, p_start_time_utc: str) -> str:
         start_local = parse_utc_timestamp(p_start_time_utc).astimezone(BERLIN)
@@ -233,9 +272,83 @@ class CompensationService:
                 )
         return entries
 
+    def load_monthly_overtime_entries(
+        self,
+        p_year: int,
+        p_month: int,
+    ) -> list[dict[str, str | Decimal]]:
+        year = int(p_year)
+        month = int(p_month)
+        aggregated: dict[tuple[str, str, str], dict[str, str | Decimal]] = {}
+
+        for file_path in booking_csv_files():
+            with file_path.open("r", encoding="utf-8-sig", newline="") as csv_file:
+                reader = csv.reader(csv_file, delimiter=";")
+                header = None
+                for row in reader:
+                    if not row:
+                        continue
+                    if "Task - Task type" in row:
+                        header = row
+                        break
+                if header is None:
+                    continue
+
+                index_map = {name: idx for idx, name in enumerate(header)}
+                required = ["Date", "User", "Task", "Time (Hours)", "Notes"]
+                if any(key not in index_map for key in required):
+                    continue
+
+                for row in reader:
+                    if len(row) < len(header):
+                        continue
+                    task_name = row[index_map["Task"]].strip()
+                    if not self._is_overtime_task(task_name):
+                        continue
+
+                    try:
+                        booking_date = datetime.strptime(
+                            row[index_map["Date"]].strip(),
+                            "%d-%m-%y",
+                        ).date()
+                    except ValueError:
+                        continue
+                    if booking_date.year != year or booking_date.month != month:
+                        continue
+
+                    hours = self.parse_booking_hours(row[index_map["Time (Hours)"]])
+                    if hours is None or hours == 0:
+                        continue
+
+                    user = row[index_map["User"]].strip()
+                    notes = row[index_map["Notes"]].strip()
+                    key = (booking_date.isoformat(), user, task_name.casefold())
+                    entry = aggregated.setdefault(
+                        key,
+                        {
+                            "booking_date": booking_date.isoformat(),
+                            "user": user,
+                            "task_name": task_name,
+                            "hours": Decimal("0"),
+                            "notes": notes,
+                            "source_file": file_path.name,
+                        },
+                    )
+                    entry["hours"] = Decimal(entry["hours"]) + hours
+
+        entries: list[dict[str, str | Decimal]] = []
+        for entry in aggregated.values():
+            hours = Decimal(entry["hours"])
+            if hours == 0:
+                continue
+            entry["hours"] = hours
+            entries.append(entry)
+        return entries
+
     def summarize_monthly_compensation_from_bookings(
         self,
         p_booking_entries: list[dict[str, str]],
+        p_overtime_entries: list[dict[str, str | Decimal]],
         p_analysts: list[object],
         p_location_filter: str | None = None,
     ) -> list[dict[str, str | int]]:
@@ -268,6 +381,10 @@ class CompensationService:
                     "shift_count_t": 0,
                     "shift_count_s": 0,
                     "total_amount_eur": 0,
+                    "overtime_ger_25_hours": "0",
+                    "overtime_ger_50_hours": "0",
+                    "overtime_ind_mo_sa_hours": "0",
+                    "overtime_ind_so_hours": "0",
                 }
 
             if slot == "F":
@@ -281,6 +398,43 @@ class CompensationService:
                 int(aggregated[analyst_id]["total_amount_eur"]) + int(amount)
             )
 
+        for entry in p_overtime_entries:
+            analyst = analysts_by_name.get(self._normalize_person_name(str(entry["user"])))
+            if analyst is None:
+                continue
+            location_id = str(analyst.oncall_location_id).strip().upper()
+            if location_filter and location_id != location_filter:
+                continue
+            analyst_id = int(analyst.id)
+            if analyst_id not in aggregated:
+                aggregated[analyst_id] = {
+                    "analyst_id": analyst_id,
+                    "buchungsname": str(analyst.buchungsname),
+                    "oncall_location_id": location_id,
+                    "shift_count_f": 0,
+                    "shift_count_t": 0,
+                    "shift_count_s": 0,
+                    "total_amount_eur": 0,
+                    "overtime_ger_25_hours": "0",
+                    "overtime_ger_50_hours": "0",
+                    "overtime_ind_mo_sa_hours": "0",
+                    "overtime_ind_so_hours": "0",
+                }
+
+            bucket = self._overtime_bucket_for_task(str(entry.get("task_name", "")))
+            if bucket is None:
+                continue
+            key_map = {
+                "GER_25": "overtime_ger_25_hours",
+                "GER_50": "overtime_ger_50_hours",
+                "IND_MO_SA": "overtime_ind_mo_sa_hours",
+                "IND_SO": "overtime_ind_so_hours",
+            }
+            target_key = key_map[bucket]
+            previous = Decimal(str(aggregated[analyst_id][target_key]))
+            updated = previous + Decimal(entry["hours"])
+            aggregated[analyst_id][target_key] = self._format_hours(updated)
+
         rows = list(aggregated.values())
         rows.sort(key=lambda row: str(row["buchungsname"]))
         return rows
@@ -288,6 +442,7 @@ class CompensationService:
     def build_booking_compensation_details(
         self,
         p_booking_entries: list[dict[str, str]],
+        p_overtime_entries: list[dict[str, str | Decimal]],
         p_analysts: list[object],
         p_analyst_id: int,
         p_location_filter: str | None = None,
@@ -313,12 +468,31 @@ class CompensationService:
             details.append(
                 {
                     "booking_date": booking_day.strftime("%d.%m.%Y"),
+                    "entry_type": "On Call",
                     "user": entry["user"],
-                    "slot": entry["slot"],
+                    "task_or_slot": entry["slot"],
                     "day_type": day_type,
+                    "hours": "1",
                     "amount_eur": amount,
                     "notes": entry.get("notes", ""),
                     "source_file": entry.get("source_file", ""),
+                }
+            )
+        for entry in p_overtime_entries:
+            if self._normalize_person_name(str(entry["user"])) != normalized_target:
+                continue
+            booking_day = date.fromisoformat(str(entry["booking_date"]))
+            details.append(
+                {
+                    "booking_date": booking_day.strftime("%d.%m.%Y"),
+                    "entry_type": "Überstunde",
+                    "user": str(entry["user"]),
+                    "task_or_slot": str(entry["task_name"]),
+                    "day_type": "",
+                    "hours": self._format_hours(Decimal(entry["hours"])),
+                    "amount_eur": "",
+                    "notes": str(entry.get("notes", "")),
+                    "source_file": str(entry.get("source_file", "")),
                 }
             )
         details.sort(key=lambda row: str(row["booking_date"]))

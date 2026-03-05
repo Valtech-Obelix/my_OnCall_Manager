@@ -73,7 +73,7 @@ class MonthlyCompensationDialog(QDialog):
         self._table.setEditTriggers(QTableWidget.NoEditTriggers)
         self._table.setSelectionBehavior(QTableWidget.SelectRows)
         self._table.setSelectionMode(QTableWidget.SingleSelection)
-        self._table.setColumnCount(6)
+        self._table.setColumnCount(8)
         self._table.setHorizontalHeaderLabels(
             [
                 "Buchungsname",
@@ -81,6 +81,8 @@ class MonthlyCompensationDialog(QDialog):
                 "Früh",
                 "Tag",
                 "Spät",
+                "25%",
+                "50%",
                 "Auszahlung (EUR)",
             ]
         )
@@ -90,13 +92,15 @@ class MonthlyCompensationDialog(QDialog):
         self._detail_table = QTableWidget()
         self._detail_table.setAlternatingRowColors(True)
         self._detail_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self._detail_table.setColumnCount(7)
+        self._detail_table.setColumnCount(9)
         self._detail_table.setHorizontalHeaderLabels(
             [
                 "Buchungsdatum",
+                "Typ",
                 "User",
-                "Schicht",
+                "Task/Schicht",
                 "Tagtyp",
+                "Stunden",
                 "Betrag (EUR)",
                 "Notiz",
                 "Quelle",
@@ -166,6 +170,7 @@ class MonthlyCompensationDialog(QDialog):
             month,
             location_filter,
         )
+        self._update_overtime_headers(location_filter)
 
         self._table.blockSignals(True)
         self._table.setRowCount(len(rows))
@@ -179,6 +184,8 @@ class MonthlyCompensationDialog(QDialog):
                 str(row_data.get("shift_count_f", 0)),
                 str(row_data.get("shift_count_t", 0)),
                 str(row_data.get("shift_count_s", 0)),
+                str(self._overtime_column_value(row_data, location_filter, 1)),
+                str(self._overtime_column_value(row_data, location_filter, 2)),
                 str(amount),
             ]
             for col_index, value in enumerate(values):
@@ -217,9 +224,11 @@ class MonthlyCompensationDialog(QDialog):
         for row_index, row_data in enumerate(rows):
             values = [
                 str(row_data.get("booking_date", "")),
+                str(row_data.get("entry_type", "")),
                 str(row_data.get("user", "")),
-                str(row_data.get("slot", "")),
+                str(row_data.get("task_or_slot", "")),
                 str(row_data.get("day_type", "")),
+                str(row_data.get("hours", "")),
                 str(row_data.get("amount_eur", 0)),
                 str(row_data.get("notes", "")),
                 str(row_data.get("source_file", "")),
@@ -227,3 +236,38 @@ class MonthlyCompensationDialog(QDialog):
             for col_index, value in enumerate(values):
                 self._detail_table.setItem(row_index, col_index, QTableWidgetItem(value))
         self._detail_table.resizeColumnsToContents()
+
+    def _update_overtime_headers(self, p_location_filter: str) -> None:
+        header_1 = "25%"
+        header_2 = "50%"
+        location = (p_location_filter or "").strip().upper()
+        if location == "IND":
+            header_1 = "MO-Sa"
+            header_2 = "So"
+        self._table.setHorizontalHeaderLabels(
+            [
+                "Buchungsname",
+                "Standort",
+                "Früh",
+                "Tag",
+                "Spät",
+                header_1,
+                header_2,
+                "Auszahlung (EUR)",
+            ]
+        )
+
+    def _overtime_column_value(
+        self,
+        p_row_data: dict[str, str | int],
+        p_location_filter: str,
+        p_column_number: int,
+    ) -> str:
+        location = (p_location_filter or "").strip().upper()
+        if location == "IND":
+            if p_column_number == 1:
+                return str(p_row_data.get("overtime_ind_mo_sa_hours", "0"))
+            return str(p_row_data.get("overtime_ind_so_hours", "0"))
+        if p_column_number == 1:
+            return str(p_row_data.get("overtime_ger_25_hours", "0"))
+        return str(p_row_data.get("overtime_ger_50_hours", "0"))

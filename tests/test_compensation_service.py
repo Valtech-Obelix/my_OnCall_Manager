@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -152,7 +153,8 @@ def test_summarize_monthly_compensation_from_bookings_groups_by_analyst() -> Non
                 "source_file": "a.csv",
             },
         ],
-        [
+        p_overtime_entries=[],
+        p_analysts=[
             _Analyst(1, "Aktiv, Max", "GER"),
             _Analyst(2, "West, Sue", "IND"),
         ],
@@ -167,6 +169,8 @@ def test_summarize_monthly_compensation_from_bookings_groups_by_analyst() -> Non
     assert max_row["shift_count_t"] == 1
     assert max_row["shift_count_s"] == 0
     assert max_row["total_amount_eur"] == 125
+    assert max_row["overtime_ger_25_hours"] == "0"
+    assert max_row["overtime_ger_50_hours"] == "0"
 
     assert sue_row["buchungsname"] == "West, Sue"
     assert sue_row["total_amount_eur"] == 10
@@ -191,7 +195,8 @@ def test_summarize_monthly_compensation_from_bookings_with_location_filter() -> 
                 "source_file": "a.csv",
             },
         ],
-        [
+        p_overtime_entries=[],
+        p_analysts=[
             _Analyst(1, "Aktiv, Max", "GER"),
             _Analyst(2, "West, Sue", "IND"),
         ],
@@ -200,6 +205,61 @@ def test_summarize_monthly_compensation_from_bookings_with_location_filter() -> 
 
     assert len(rows) == 1
     assert rows[0]["buchungsname"] == "Aktiv, Max"
+
+
+def test_summarize_monthly_compensation_includes_overtime_hours() -> None:
+    service = CompensationService()
+    rows = service.summarize_monthly_compensation_from_bookings(
+        p_booking_entries=[],
+        p_overtime_entries=[
+            {
+                "booking_date": "2026-02-03",
+                "user": "Aysel, Mecnur",
+                "task_name": "Arbeit (25%) WT (6-9, 17-20) Sa (6-20)",
+                "hours": Decimal("1.5"),
+                "notes": "",
+                "source_file": "a.csv",
+            }
+        ],
+        p_analysts=[_Analyst(1, "Aysel, Mecnur", "GER")],
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["overtime_ger_25_hours"] == "1.5"
+    assert rows[0]["overtime_ger_50_hours"] == "0"
+    assert rows[0]["overtime_ind_mo_sa_hours"] == "0"
+    assert rows[0]["overtime_ind_so_hours"] == "0"
+
+
+def test_summarize_monthly_compensation_includes_india_overtime_buckets() -> None:
+    service = CompensationService()
+    rows = service.summarize_monthly_compensation_from_bookings(
+        p_booking_entries=[],
+        p_overtime_entries=[
+            {
+                "booking_date": "2026-02-08",
+                "user": "West, Sue",
+                "task_name": "Work On Call Shift (Mo-Sat)",
+                "hours": Decimal("2"),
+                "notes": "",
+                "source_file": "a.csv",
+            },
+            {
+                "booking_date": "2026-02-09",
+                "user": "West, Sue",
+                "task_name": "Work On Call Shift (Sunday)",
+                "hours": Decimal("1.5"),
+                "notes": "",
+                "source_file": "a.csv",
+            },
+        ],
+        p_analysts=[_Analyst(2, "West, Sue", "IND")],
+        p_location_filter="IND",
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["overtime_ind_mo_sa_hours"] == "2"
+    assert rows[0]["overtime_ind_so_hours"] == "1.5"
 
 
 def test_build_booking_compensation_details() -> None:
@@ -214,13 +274,43 @@ def test_build_booking_compensation_details() -> None:
                 "source_file": "a.csv",
             }
         ],
+        p_overtime_entries=[],
         p_analysts=[_Analyst(1, "Aktiv, Max", "GER")],
         p_analyst_id=1,
     )
 
     assert len(details) == 1
     detail = details[0]
-    assert detail["slot"] == "F"
+    assert detail["entry_type"] == "On Call"
+    assert detail["task_or_slot"] == "F"
+    assert detail["hours"] == "1"
     assert detail["day_type"] == "WEEKDAY"
     assert detail["amount_eur"] == 125
     assert detail["source_file"] == "a.csv"
+
+
+def test_load_monthly_overtime_entries_applies_counter_bookings(monkeypatch, tmp_path: Path) -> None:
+    csv_path = tmp_path / "bookings.csv"
+    csv_path.write_text(
+        (
+            "\"report\"\n"
+            "\"Internal id\";\"Date\";\"User\";\"Client\";\"Project\";\"Task - Task type\";\"Task\";\"Time (Hours)\";\"Notes\"\n"
+            "\"1\";\"03-02-26\";\"Aysel, Mecnur\";\"c\";\"p\";\"Overtime\";\"Arbeit (25%) WT (6-9, 17-20) Sa (6-20)\";\"1,50\";\"n\"\n"
+            "\"2\";\"03-02-26\";\"Aysel, Mecnur\";\"c\";\"p\";\"Overtime\";\"Arbeit (25%) WT (6-9, 17-20) Sa (6-20)\";\"-0,50\";\"n\"\n"
+            "\"3\";\"03-02-26\";\"Aysel, Mecnur\";\"c\";\"p\";\"On Call\";\"Rufbereitschaft Werktags\";\"1,00\";\"[Früh]\"\n"
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "src.services.compensation_service.booking_csv_files",
+        lambda: [csv_path],
+    )
+
+    service = CompensationService()
+    entries = service.load_monthly_overtime_entries(2026, 2)
+
+    assert len(entries) == 1
+    assert entries[0]["booking_date"] == "2026-02-03"
+    assert entries[0]["user"] == "Aysel, Mecnur"
+    assert entries[0]["task_name"] == "Arbeit (25%) WT (6-9, 17-20) Sa (6-20)"
+    assert entries[0]["hours"] == Decimal("1.00")
