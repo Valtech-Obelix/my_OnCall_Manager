@@ -19,6 +19,7 @@ from    src.ui.location_shift_distribution_dialog           import  LocationShif
 from    src.ui.monthly_compensation_dialog                 import  MonthlyCompensationDialog
 from    src.ui.gehaltsgruppe_dialog                        import  GehaltsgruppeDialog
 from    src.ui.client_utilized_cost_dialog                 import  ClientUtilizedCostDialog
+from    src.ui.overtime_cost_dialog                        import  OvertimeCostDialog
 
 
 APP_TITLE                               =   'my_OnCall_Manager'
@@ -32,6 +33,7 @@ ACTION_COMPARE_SHIFTS_BOOKINGS          =   'Schichtplan vs. Buchungen vergleich
 ACTION_LOCATION_SHIFT_DISTRIBUTION      =   'Schichtverteilung nach Standort'
 ACTION_MONTHLY_COMPENSATION             =   'Monatsabrechnung IA-Auszahlung'
 ACTION_TEST_CLIENT_UTILIZED_COSTS       =   'Client Utilized Kosten testen'
+ACTION_TEST_OVERTIME_COSTS             =   'Overtime Kosten testen'
 ACTION_OPEN_BOOKING_FOLDER              =   'CSV-Ordner öffnen'
 ACTION_CLOSE                            =   'Schließen'
 
@@ -160,6 +162,10 @@ class MainWindow(QMainWindow):
         action_client_utilized_costs.triggered.connect(self._open_client_utilized_cost_dialog)
         analysis_menu.addAction(action_client_utilized_costs)
 
+        action_overtime_costs = QAction(ACTION_TEST_OVERTIME_COSTS, self)
+        action_overtime_costs.triggered.connect(self._open_overtime_cost_dialog)
+        analysis_menu.addAction(action_overtime_costs)
+
 
     def _open_incident_analyst_dialog(self):
 
@@ -204,6 +210,10 @@ class MainWindow(QMainWindow):
 
     def _open_client_utilized_cost_dialog(self):
         dialog = ClientUtilizedCostDialog(self._application, self)
+        dialog.exec()
+
+    def _open_overtime_cost_dialog(self):
+        dialog = OvertimeCostDialog(self._application, self)
         dialog.exec()
 
     def _open_booking_csv_folder(self):

@@ -359,6 +359,157 @@ class Application:
         rows.sort(key=lambda row: (str(row.get("buchungsname", "")), str(row.get("booking_date", ""))))
         return rows
 
+    def get_overtime_costs_for_month(
+        self,
+        p_year: int,
+        p_month: int,
+        p_location_filter: str | None = None,
+    ) -> list[dict[str, str]]:
+        entries = self._compensation_service.load_monthly_overtime_entries(
+            p_year,
+            p_month,
+        )
+        analysts = self.get_all_incident_analysts()
+
+        analysts_by_name = {
+            self._compensation_service._normalize_person_name(str(analyst.buchungsname)): analyst
+            for analyst in analysts
+        }
+
+        location_filter = p_location_filter.strip().upper() if p_location_filter else None
+        rows: list[dict[str, str]] = []
+
+        for entry in entries:
+            analyst = analysts_by_name.get(
+                self._compensation_service._normalize_person_name(str(entry["user"]))
+            )
+            if analyst is None:
+                booking_date = date.fromisoformat(str(entry["booking_date"]))
+                rows.append(
+                    {
+                        "booking_date": booking_date.strftime("%d.%m.%Y"),
+                        "buchungsname": str(entry["user"]),
+                        "task_name": str(entry["task_name"]),
+                        "hours": self._compensation_service._format_hours(Decimal(str(entry["hours"]))),
+                        "rate_eur": "0",
+                        "cost_eur": "0",
+                        "gehaltsgruppe": "",
+                        "group_amount": "",
+                        "source_file": str(entry["source_file"]),
+                        "status": "Mitarbeiter nicht gefunden",
+                    }
+                )
+                continue
+
+            location_id = str(analyst.oncall_location_id).strip().upper()
+            if location_filter and location_id != location_filter:
+                continue
+
+            booking_date = date.fromisoformat(str(entry["booking_date"]))
+            bucket = self._compensation_service._overtime_bucket_for_task(
+                p_task_name=str(entry["task_name"])
+            )
+            hours = Decimal(str(entry["hours"]))
+            booking_count = int(entry.get("booking_count", 0))
+
+            if bucket in ("GER_25", "GER_50"):
+                assignment = self._mitarbeiter_gehaltsgruppe_service.get_assignment_at(
+                    p_mitarbeiter_id=int(analyst.id),
+                    p_stichtag=booking_date,
+                )
+                if assignment is None:
+                    rows.append(
+                        {
+                            "booking_date": booking_date.strftime("%d.%m.%Y"),
+                            "buchungsname": str(analyst.buchungsname),
+                            "task_name": str(entry["task_name"]),
+                            "hours": self._compensation_service._format_hours(hours),
+                            "rate_eur": "0",
+                            "cost_eur": "0",
+                            "gehaltsgruppe": "",
+                            "group_amount": "",
+                            "source_file": str(entry["source_file"]),
+                            "status": "Keine Gehaltsgruppe am Buchungsdatum",
+                        }
+                    )
+                    continue
+
+                amount = self._gehaltsgruppe_service.get_betrag_am_stichtag(
+                    p_group_id=int(assignment["gehaltsgruppe_id"]),
+                    p_stichtag=booking_date,
+                )
+                if amount is None:
+                    rows.append(
+                        {
+                            "booking_date": booking_date.strftime("%d.%m.%Y"),
+                            "buchungsname": str(analyst.buchungsname),
+                            "task_name": str(entry["task_name"]),
+                            "hours": self._compensation_service._format_hours(hours),
+                            "rate_eur": "0",
+                            "cost_eur": "0",
+                            "gehaltsgruppe": str(assignment.get("gehaltsgruppe_bezeichnung", "")),
+                            "group_amount": "",
+                            "source_file": str(entry["source_file"]),
+                            "status": "Kein Betrag für diesen Tag",
+                        }
+                    )
+                    continue
+
+                rate = Decimal(str(amount))
+                multiplier = Decimal("1.25") if bucket == "GER_25" else Decimal("1.5")
+                cost = hours * rate * multiplier
+                rows.append(
+                    {
+                        "booking_date": booking_date.strftime("%d.%m.%Y"),
+                        "buchungsname": str(analyst.buchungsname),
+                        "task_name": str(entry["task_name"]),
+                        "hours": self._compensation_service._format_hours(hours),
+                        "rate_eur": self._compensation_service._format_hours(rate),
+                        "cost_eur": self._compensation_service._format_hours(cost),
+                        "gehaltsgruppe": str(assignment.get("gehaltsgruppe_bezeichnung", "")),
+                        "group_amount": self._compensation_service._format_hours(rate),
+                        "source_file": str(entry["source_file"]),
+                        "status": f"Faktor {multiplier}",
+                    }
+                )
+                continue
+
+            if bucket in ("IND_MO_SA", "IND_SO"):
+                cost = Decimal("10") * Decimal(booking_count)
+                rows.append(
+                    {
+                        "booking_date": booking_date.strftime("%d.%m.%Y"),
+                        "buchungsname": str(analyst.buchungsname),
+                        "task_name": str(entry["task_name"]),
+                        "hours": self._compensation_service._format_hours(hours),
+                        "rate_eur": "10",
+                        "cost_eur": self._compensation_service._format_hours(cost),
+                        "gehaltsgruppe": "",
+                        "group_amount": "",
+                        "source_file": str(entry["source_file"]),
+                        "status": "",
+                    }
+                )
+                continue
+
+            rows.append(
+                {
+                    "booking_date": booking_date.strftime("%d.%m.%Y"),
+                    "buchungsname": str(analyst.buchungsname),
+                    "task_name": str(entry["task_name"]),
+                    "hours": self._compensation_service._format_hours(hours),
+                    "rate_eur": "0",
+                    "cost_eur": "0",
+                    "gehaltsgruppe": "",
+                    "group_amount": "",
+                    "source_file": str(entry["source_file"]),
+                    "status": "Unbekannter Overtime Task",
+                }
+            )
+
+        rows.sort(key=lambda row: (str(row.get("buchungsname", "")), str(row.get("booking_date", ""))))
+        return rows
+
     # Ref: UC-009 – zuletzt verwendeten n-Wert persistieren
     def get_last_shift_count_weeks(self) -> int:
         value = self._shift_repository.get_setting("last_shift_count_weeks")

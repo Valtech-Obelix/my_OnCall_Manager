@@ -279,7 +279,7 @@ class CompensationService:
     ) -> list[dict[str, str | Decimal]]:
         year = int(p_year)
         month = int(p_month)
-        aggregated: dict[tuple[str, str, str], dict[str, str | Decimal]] = {}
+        aggregated: dict[tuple[str, str, str], dict[str, str | Decimal | int]] = {}
 
         for file_path in booking_csv_files():
             with file_path.open("r", encoding="utf-8-sig", newline="") as csv_file:
@@ -335,11 +335,13 @@ class CompensationService:
                             "user": user,
                             "task_name": task_name,
                             "hours": Decimal("0"),
+                            "booking_count": 0,
                             "notes": notes,
                             "source_file": file_path.name,
                         },
                     )
                     entry["hours"] = Decimal(entry["hours"]) + hours
+                    entry["booking_count"] = int(entry["booking_count"]) + 1
 
         entries: list[dict[str, str | Decimal]] = []
         for entry in aggregated.values():
@@ -363,7 +365,7 @@ class CompensationService:
         self,
         p_year: int,
         p_month: int,
-    ) -> list[dict[str, str | Decimal]]:
+    ) -> list[dict[str, str | Decimal | int]]:
         year = int(p_year)
         month = int(p_month)
         aggregated: dict[tuple[str, str, str], dict[str, str | Decimal]] = {}
@@ -429,6 +431,7 @@ class CompensationService:
             if hours == 0:
                 continue
             entry["hours"] = hours
+            entry["booking_count"] = int(entry["booking_count"])
             entries.append(entry)
         return entries
 
