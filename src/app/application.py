@@ -3,6 +3,7 @@ import  logging
 from    pathlib                                             import Path
 from    PySide6.QtWidgets                                   import  QApplication
 from    datetime                                            import  date
+from    decimal                                             import  Decimal
 
 from    src.ui.main_window                                  import  MainWindow
 from    src.infrastructure.database                         import  Database
@@ -227,6 +228,113 @@ class Application:
             p_analyst_id=p_analyst_id,
             p_location_filter=p_location_filter,
         )
+
+    # Ref: UC-020 – Client Utilized Kosten vorladen
+    def get_client_utilized_costs_for_month(
+        self,
+        p_year: int,
+        p_month: int,
+        p_location_filter: str | None = None,
+    ) -> list[dict[str, str]]:
+        entries = self._compensation_service.load_monthly_client_utilized_entries(
+            p_year,
+            p_month,
+        )
+        analysts = self.get_all_incident_analysts()
+
+        analysts_by_name = {
+            self._compensation_service._normalize_person_name(str(analyst.buchungsname)): analyst
+            for analyst in analysts
+        }
+
+        location_filter = p_location_filter.strip().upper() if p_location_filter else None
+        rows: list[dict[str, str]] = []
+
+        for entry in entries:
+            analyst = analysts_by_name.get(
+                self._compensation_service._normalize_person_name(str(entry["user"]))
+            )
+            if analyst is None:
+                booking_date = date.fromisoformat(str(entry["booking_date"]))
+                rows.append(
+                    {
+                        "booking_date": booking_date.strftime("%d.%m.%Y"),
+                        "buchungsname": str(entry["user"]),
+                        "task_name": str(entry["task_name"]),
+                        "hours": self._compensation_service._format_hours(Decimal(str(entry["hours"]))),
+                        "rate_eur": "0",
+                        "cost_eur": "0",
+                        "gehaltsgruppe": "",
+                        "source_file": str(entry["source_file"]),
+                        "status": "Mitarbeiter nicht gefunden",
+                    }
+                )
+                continue
+
+            location_id = str(analyst.oncall_location_id).strip().upper()
+            if location_filter and location_id != location_filter:
+                continue
+
+            booking_date = date.fromisoformat(str(entry["booking_date"]))
+            assignment = self._mitarbeiter_gehaltsgruppe_service.get_assignment_at(
+                p_mitarbeiter_id=int(analyst.id),
+                p_stichtag=booking_date,
+            )
+            if assignment is None:
+                rows.append(
+                    {
+                        "booking_date": booking_date.strftime("%d.%m.%Y"),
+                        "buchungsname": str(analyst.buchungsname),
+                        "task_name": str(entry["task_name"]),
+                        "hours": self._compensation_service._format_hours(Decimal(str(entry["hours"]))),
+                        "rate_eur": "0",
+                        "cost_eur": "0",
+                        "gehaltsgruppe": "",
+                        "source_file": str(entry["source_file"]),
+                        "status": "Keine Gehaltsgruppe am Buchungsdatum",
+                    }
+                )
+                continue
+
+            amount = self._gehaltsgruppe_service.get_betrag_am_stichtag(
+                p_group_id=int(assignment["gehaltsgruppe_id"]),
+                p_stichtag=booking_date,
+            )
+            if amount is None:
+                rows.append(
+                    {
+                        "booking_date": booking_date.strftime("%d.%m.%Y"),
+                        "buchungsname": str(analyst.buchungsname),
+                        "task_name": str(entry["task_name"]),
+                        "hours": self._compensation_service._format_hours(Decimal(str(entry["hours"]))),
+                        "rate_eur": "0",
+                        "cost_eur": "0",
+                        "gehaltsgruppe": str(assignment.get("gehaltsgruppe_bezeichnung", "")),
+                        "source_file": str(entry["source_file"]),
+                        "status": "Kein Betrag fuer diesen Tag",
+                    }
+                )
+                continue
+
+            hours = Decimal(str(entry["hours"]))
+            rate = Decimal(str(amount))
+            cost = rate * hours
+            rows.append(
+                {
+                    "booking_date": booking_date.strftime("%d.%m.%Y"),
+                    "buchungsname": str(analyst.buchungsname),
+                    "task_name": str(entry["task_name"]),
+                    "hours": self._compensation_service._format_hours(hours),
+                    "rate_eur": self._compensation_service._format_hours(rate),
+                    "cost_eur": self._compensation_service._format_hours(cost),
+                    "gehaltsgruppe": str(assignment.get("gehaltsgruppe_bezeichnung", "")),
+                    "source_file": str(entry["source_file"]),
+                    "status": "",
+                }
+            )
+
+        rows.sort(key=lambda row: (str(row.get("buchungsname", "")), str(row.get("booking_date", ""))))
+        return rows
 
     # Ref: UC-009 – zuletzt verwendeten n-Wert persistieren
     def get_last_shift_count_weeks(self) -> int:

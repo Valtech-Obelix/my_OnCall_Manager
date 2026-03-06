@@ -272,6 +272,93 @@ class CompensationService:
                 )
         return entries
 
+    def load_monthly_client_utilized_entries(
+        self,
+        p_year: int,
+        p_month: int,
+    ) -> list[dict[str, str | Decimal]]:
+        year = int(p_year)
+        month = int(p_month)
+        aggregated: dict[tuple[str, str, str], dict[str, str | Decimal]] = {}
+
+        for file_path in booking_csv_files():
+            with file_path.open("r", encoding="utf-8-sig", newline="") as csv_file:
+                reader = csv.reader(csv_file, delimiter=";")
+                header = None
+                for row in reader:
+                    if not row:
+                        continue
+                    if "Task - Task type" in row:
+                        header = row
+                        break
+                if header is None:
+                    continue
+
+                index_map = {name: idx for idx, name in enumerate(header)}
+                required = ["Date", "User", "Task - Task type", "Time (Hours)", "Task"]
+                if any(key not in index_map for key in required):
+                    continue
+
+                for row in reader:
+                    if len(row) < len(header):
+                        continue
+
+                    task_type = row[index_map["Task - Task type"]].strip().casefold()
+                    if task_type != "client utilized":
+                        continue
+
+                    try:
+                        booking_date = datetime.strptime(
+                            row[index_map["Date"]].strip(),
+                            "%d-%m-%y",
+                        ).date()
+                    except ValueError:
+                        continue
+                    if booking_date.year != year or booking_date.month != month:
+                        continue
+
+                    hours = self.parse_booking_hours(row[index_map["Time (Hours)"]])
+                    if hours is None or hours == 0:
+                        continue
+
+                    user = row[index_map["User"]].strip()
+                    task_name = row[index_map["Task"]].strip()
+                    notes = ""
+                    if "Notes" in index_map and index_map["Notes"] < len(row):
+                        notes = row[index_map["Notes"]].strip()
+
+                    key = (booking_date.isoformat(), user, task_name.casefold())
+                    entry = aggregated.setdefault(
+                        key,
+                        {
+                            "booking_date": booking_date.isoformat(),
+                            "user": user,
+                            "task_name": task_name,
+                            "hours": Decimal("0"),
+                            "notes": notes,
+                            "source_file": file_path.name,
+                        },
+                    )
+                    entry["hours"] = Decimal(entry["hours"]) + hours
+
+        entries: list[dict[str, str | Decimal]] = []
+        for entry in aggregated.values():
+            hours = Decimal(entry["hours"])
+            if hours == 0:
+                continue
+
+            entries.append(
+                {
+                    "booking_date": str(entry["booking_date"]),
+                    "user": str(entry["user"]),
+                    "task_name": str(entry["task_name"]),
+                    "hours": hours,
+                    "notes": str(entry["notes"]),
+                    "source_file": str(entry["source_file"]),
+                }
+            )
+        return entries
+
     def load_monthly_overtime_entries(
         self,
         p_year: int,

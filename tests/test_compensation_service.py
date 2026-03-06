@@ -127,6 +127,33 @@ def test_load_monthly_booking_entries_applies_counter_bookings(monkeypatch, tmp_
     assert entries[0]["slot"] == "F"
 
 
+def test_load_monthly_client_utilized_entries_filters_task_type(monkeypatch, tmp_path: Path) -> None:
+    csv_path = tmp_path / "bookings.csv"
+    csv_path.write_text(
+        (
+            "\"report\"\n"
+            "\"Internal id\";\"Date\";\"User\";\"Client\";\"Project\";\"Task - Task type\";\"Task\";\"Time (Hours)\";\"Notes\"\n"
+            "\"1\";\"03-02-26\";\"Aysel, Mecnur\";\"c\";\"p\";\"On Call\";\"Rufbereitschaft Werktags\";\"1,00\";\"[Früh]\"\n"
+            "\"2\";\"03-02-26\";\"Aysel, Mecnur\";\"c\";\"p\";\"Client Utilized\";\"RB Abstimmung\";\"1,50\";\"n\"\n"
+            "\"3\";\"03-03-26\";\"Aysel, Mecnur\";\"c\";\"p\";\"Client Utilized\";\"RB Abstimmung\";\"2,00\";\"n\"\n"
+        ),
+        encoding=\"utf-8\",
+    )
+    monkeypatch.setattr(
+        \"src.services.compensation_service.booking_csv_files\",
+        lambda: [csv_path],
+    )
+
+    service = CompensationService()
+    entries = service.load_monthly_client_utilized_entries(2026, 2)
+
+    assert len(entries) == 1
+    assert entries[0][\"booking_date\"] == "2026-02-03"
+    assert entries[0][\"user\"] == "Aysel, Mecnur"
+    assert entries[0][\"task_name\"] == "RB Abstimmung"
+    assert entries[0][\"hours\"] == Decimal("1.50")
+
+
 def test_summarize_monthly_compensation_from_bookings_groups_by_analyst() -> None:
     service = CompensationService()
     rows = service.summarize_monthly_compensation_from_bookings(

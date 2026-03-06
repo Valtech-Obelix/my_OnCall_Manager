@@ -18,6 +18,7 @@ from    src.ui.shift_booking_compare_dialog                 import  ShiftBooking
 from    src.ui.location_shift_distribution_dialog           import  LocationShiftDistributionDialog
 from    src.ui.monthly_compensation_dialog                 import  MonthlyCompensationDialog
 from    src.ui.gehaltsgruppe_dialog                        import  GehaltsgruppeDialog
+from    src.ui.client_utilized_cost_dialog                 import  ClientUtilizedCostDialog
 
 
 APP_TITLE                               =   'my_OnCall_Manager'
@@ -30,6 +31,7 @@ ACTION_MANAGE_GEHALTSGRUPPEN            =   'der Gehaltsgruppen'
 ACTION_COMPARE_SHIFTS_BOOKINGS          =   'Schichtplan vs. Buchungen vergleichen'
 ACTION_LOCATION_SHIFT_DISTRIBUTION      =   'Schichtverteilung nach Standort'
 ACTION_MONTHLY_COMPENSATION             =   'Monatsabrechnung IA-Auszahlung'
+ACTION_TEST_CLIENT_UTILIZED_COSTS       =   'Client Utilized Kosten testen'
 ACTION_OPEN_BOOKING_FOLDER              =   'CSV-Ordner öffnen'
 ACTION_CLOSE                            =   'Schließen'
 
@@ -154,6 +156,10 @@ class MainWindow(QMainWindow):
         action_monthly_compensation.triggered.connect(self._open_monthly_compensation_dialog)
         analysis_menu.addAction(action_monthly_compensation)
 
+        action_client_utilized_costs = QAction(ACTION_TEST_CLIENT_UTILIZED_COSTS, self)
+        action_client_utilized_costs.triggered.connect(self._open_client_utilized_cost_dialog)
+        analysis_menu.addAction(action_client_utilized_costs)
+
 
     def _open_incident_analyst_dialog(self):
 
@@ -194,6 +200,10 @@ class MainWindow(QMainWindow):
 
     def _open_monthly_compensation_dialog(self):
         dialog = MonthlyCompensationDialog(self._application, self)
+        dialog.exec()
+
+    def _open_client_utilized_cost_dialog(self):
+        dialog = ClientUtilizedCostDialog(self._application, self)
         dialog.exec()
 
     def _open_booking_csv_folder(self):
