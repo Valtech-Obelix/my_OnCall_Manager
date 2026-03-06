@@ -412,18 +412,18 @@ class CompensationService:
                     user = row[index_map["User"]].strip()
                     notes = row[index_map["Notes"]].strip()
                     key = (booking_date.isoformat(), user, task_name.casefold())
-                        entry = aggregated.setdefault(
-                            key,
-                            {
-                                "booking_date": booking_date.isoformat(),
-                                "user": user,
-                                "task_name": task_name,
-                                "hours": Decimal("0"),
-                                "booking_count": 0,
-                                "notes": notes,
-                                "source_file": file_path.name,
-                            },
-                        )
+                    entry = aggregated.setdefault(
+                        key,
+                        {
+                            "booking_date": booking_date.isoformat(),
+                            "user": user,
+                            "task_name": task_name,
+                            "hours": Decimal("0"),
+                            "booking_count": 0,
+                            "notes": notes,
+                            "source_file": file_path.name,
+                        },
+                    )
                     entry["hours"] = Decimal(entry["hours"]) + hours
                     entry["booking_count"] = int(entry["booking_count"]) + 1
 
