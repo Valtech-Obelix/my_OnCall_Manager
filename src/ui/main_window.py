@@ -21,6 +21,7 @@ from    src.ui.gehaltsgruppe_dialog                        import  Gehaltsgruppe
 from    src.ui.client_utilized_cost_dialog                 import  ClientUtilizedCostDialog
 from    src.ui.overtime_cost_dialog                        import  OvertimeCostDialog
 from    src.ui.on_call_cost_dialog                         import  OnCallCostDialog
+from    src.ui.budget_management_dialog                    import  BudgetManagementDialog
 
 
 APP_TITLE                               =   'my_OnCall_Manager'
@@ -30,6 +31,7 @@ ACTION_VIEW_SHIFT_PLAN                  =   'Schichtplan anzeigen'
 ACTION_VIEW_IA_SHIFT_COUNTS             =   'Aktive IA Schichtanzahl anzeigen'
 ACTION_VIEW_ONCALL_LOCATIONS            =   'der Rufbereitschaftsstandorte'
 ACTION_MANAGE_GEHALTSGRUPPEN            =   'der Gehaltsgruppen'
+ACTION_MANAGE_BUDGETS                   =   'des Budgets'
 ACTION_COMPARE_SHIFTS_BOOKINGS          =   'Schichtplan vs. Buchungen vergleichen'
 ACTION_LOCATION_SHIFT_DISTRIBUTION      =   'Schichtverteilung nach Standort'
 ACTION_MONTHLY_COMPENSATION             =   'Monatsabrechnung IA-Auszahlung'
@@ -119,6 +121,10 @@ class MainWindow(QMainWindow):
         action_manage_gehaltsgruppen.triggered.connect(self._open_gehaltsgruppe_dialog)
         management_menu.addAction(action_manage_gehaltsgruppen)
 
+        action_manage_budgets = QAction(ACTION_MANAGE_BUDGETS, self)
+        action_manage_budgets.triggered.connect(self._open_budget_management_dialog)
+        management_menu.addAction(action_manage_budgets)
+
         action_manage_analysts = QAction(ACTION_MANAGE_ANALYSTS, self)
         action_manage_analysts.triggered.connect(self._open_incident_analyst_dialog)
         management_menu.addAction(action_manage_analysts)
@@ -200,6 +206,10 @@ class MainWindow(QMainWindow):
 
     def _open_gehaltsgruppe_dialog(self):
         dialog = GehaltsgruppeDialog(self._application, self)
+        dialog.exec()
+
+    def _open_budget_management_dialog(self):
+        dialog = BudgetManagementDialog(self._application, self)
         dialog.exec()
 
     def _open_shift_booking_compare_dialog(self):
