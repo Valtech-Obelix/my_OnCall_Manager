@@ -563,6 +563,11 @@ class Application:
                     p_day=booking_date,
                     p_slot=slot,
                 )))
+                if location_id == "GER":
+                    rate = rate * Decimal("1.25")
+                    status_text = "Faktor 1.25 (GER Lohnnebenkosten)"
+                else:
+                    status_text = ""
             except Exception:
                 rows.append(
                     {
@@ -589,7 +594,7 @@ class Application:
                     "rate_eur": self._compensation_service._format_hours(rate),
                     "cost_eur": self._compensation_service._format_hours(rate),
                     "source_file": str(entry["source_file"]),
-                    "status": "",
+                    "status": status_text,
                 }
             )
 
