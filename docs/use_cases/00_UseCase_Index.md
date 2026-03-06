@@ -22,6 +22,7 @@
 | UC-018 | Einfuehrung von Mitarbeitertypen      | abgeschlossen | 0.1     |
 | UC-019 | Zuordnung von Gehaltsklassen zu Mitarbeitern | abgeschlossen | 0.1     |
 | UC-020 | Buchungen Kosten zuordnen             | abgeschlossen | 0.2     |
+| UC-021 | Verwaltung des Budgets                  | in Arbeit     | 0.1     |
 
 ## Verknüpfte Änderungshistorie
 
