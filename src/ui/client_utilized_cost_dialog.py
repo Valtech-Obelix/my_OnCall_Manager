@@ -66,7 +66,7 @@ class ClientUtilizedCostDialog(QDialog):
         self._table.setEditTriggers(QTableWidget.NoEditTriggers)
         self._table.setSelectionBehavior(QTableWidget.SelectRows)
         self._table.setSelectionMode(QTableWidget.SingleSelection)
-        self._table.setColumnCount(8)
+        self._table.setColumnCount(9)
         self._table.setHorizontalHeaderLabels(
             [
                 "Buchungsdatum",
@@ -76,6 +76,7 @@ class ClientUtilizedCostDialog(QDialog):
                 "Stundensatz (EUR)",
                 "Kosten (EUR)",
                 "Gehaltsgruppe",
+                "Betrag (EUR)",
                 "Status",
             ]
         )
@@ -158,6 +159,7 @@ class ClientUtilizedCostDialog(QDialog):
                 str(row_data.get("rate_eur", "")),
                 str(row_data.get("cost_eur", "")),
                 str(row_data.get("gehaltsgruppe", "")),
+                str(row_data.get("group_amount", "")),
                 str(row_data.get("status", "")),
             ]
             for col_index, value in enumerate(values):

@@ -290,6 +290,7 @@ class Application:
                         "rate_eur": "0",
                         "cost_eur": "0",
                         "gehaltsgruppe": "",
+                        "group_amount": "",
                         "source_file": str(entry["source_file"]),
                         "status": "Keine Gehaltsgruppe am Buchungsdatum",
                     }
@@ -301,6 +302,26 @@ class Application:
                 p_stichtag=booking_date,
             )
             if amount is None:
+                betraege = self._gehaltsgruppe_service.get_betraege(
+                    p_group_id=int(assignment["gehaltsgruppe_id"])
+                )
+                if len(betraege) == 0:
+                    status_text = "Kein Betrag hinterlegt für diese Gehaltsgruppe"
+                else:
+                    status_text = "Kein Betrag mit gueltig_ab <= Buchungsdatum"
+                    try:
+                        future_dates = [
+                            date.fromisoformat(str(item.get("gueltig_ab", "")))
+                            for item in betraege
+                        ]
+                        future_dates = [d for d in future_dates if d > booking_date]
+                        if future_dates:
+                            status_text = (
+                                "Kein Betrag für dieses Datum. "
+                                f"Erster gültiger Betrag ab {min(future_dates).strftime('%d.%m.%Y')}"
+                            )
+                    except (TypeError, ValueError):
+                        pass
                 rows.append(
                     {
                         "booking_date": booking_date.strftime("%d.%m.%Y"),
@@ -310,8 +331,9 @@ class Application:
                         "rate_eur": "0",
                         "cost_eur": "0",
                         "gehaltsgruppe": str(assignment.get("gehaltsgruppe_bezeichnung", "")),
+                        "group_amount": "",
                         "source_file": str(entry["source_file"]),
-                        "status": "Kein Betrag fuer diesen Tag",
+                        "status": status_text,
                     }
                 )
                 continue
@@ -328,6 +350,7 @@ class Application:
                     "rate_eur": self._compensation_service._format_hours(rate),
                     "cost_eur": self._compensation_service._format_hours(cost),
                     "gehaltsgruppe": str(assignment.get("gehaltsgruppe_bezeichnung", "")),
+                    "group_amount": self._compensation_service._format_hours(rate),
                     "source_file": str(entry["source_file"]),
                     "status": "",
                 }
