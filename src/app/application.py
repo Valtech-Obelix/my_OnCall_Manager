@@ -17,11 +17,13 @@ from    src.services.compensation_service                   import  Compensation
 from    src.infrastructure.opsgenie_client                  import  OpsGenieClient
 from    src.infrastructure.oncall_location_repository       import  OnCallLocationRepository
 from    src.infrastructure.gehaltsgruppe_repository         import  GehaltsgruppeRepository
+from    src.infrastructure.budget_repository               import  BudgetRepository
 from    src.infrastructure.secret_loader                    import  load_opsgenie_api_key
 from    src.infrastructure.runtime_paths                    import  user_booking_data_dir
 from    src.services.gehaltsgruppe_service                 import  GehaltsgruppeService
 from    src.services.mitarbeiter_gehaltsgruppe_service     import  MitarbeiterGehaltsgruppeService
 from    src.services.mitarbeiter_aktivierung_service       import  MitarbeiterAktivierungService
+from    src.services.budget_service                        import  BudgetService
 
 class Application:
 
@@ -69,6 +71,8 @@ class Application:
         self._mitarbeiter_aktivierung_service = MitarbeiterAktivierungService(
             self._analyst_repository
         )
+        self._budget_repository = BudgetRepository(self._database.get_connection())
+        self._budget_service = BudgetService(self._budget_repository)
 
         # Ref: UC-004 – vollständige Verdrahtung
         self._shift_repository = ShiftRepository(self._database.get_connection())
@@ -666,6 +670,93 @@ class Application:
     # Ref: UC-011 – Rufbereitschaftsstandorte
     def delete_oncall_location(self, p_id: str) -> None:
         self._oncall_location_repository.delete(p_id)
+
+    # Ref: UC-021 – Budgetquellen verwalten
+    def create_budget_source(self, p_name: str) -> int:
+        return self._budget_service.create_source(p_name=p_name)
+
+    # Ref: UC-021 – Budgetquellen anzeigen
+    def get_budget_sources(self, p_include_inactive: bool = False) -> list[dict[str, str | int]]:
+        return self._budget_service.get_sources(p_include_inactive=p_include_inactive)
+
+    # Ref: UC-021 – Budgetquelle abrufen
+    def get_budget_source(self, p_source_id: int) -> dict[str, str | int]:
+        return self._budget_service.get_source(p_source_id=p_source_id)
+
+    # Ref: UC-021 – Budgetquelle umbenennen
+    def rename_budget_source(self, p_source_id: int, p_name: str) -> None:
+        self._budget_service.rename_source(p_source_id=p_source_id, p_name=p_name)
+
+    # Ref: UC-021 – Budgetquelle aktiv/inaktiv setzen
+    def set_budget_source_active(self, p_source_id: int, p_is_active: bool) -> None:
+        self._budget_service.set_source_active(
+            p_source_id=p_source_id,
+            p_is_active=p_is_active,
+        )
+
+    # Ref: UC-021 – Budgetquelle löschen
+    def delete_budget_source(self, p_source_id: int) -> None:
+        self._budget_service.delete_source(p_source_id=p_source_id)
+
+    # Ref: UC-021 – Budgetzeitraum anlegen
+    def create_budget_period(
+        self,
+        p_budget_source_id: int,
+        p_gueltig_ab: date,
+        p_betrag_eur: float,
+        p_gueltig_bis: date | None = None,
+        p_note: str | None = None,
+    ) -> int:
+        return self._budget_service.create_period(
+            p_budget_source_id=p_budget_source_id,
+            p_gueltig_ab=p_gueltig_ab,
+            p_gueltig_bis=p_gueltig_bis,
+            p_betrag_eur=p_betrag_eur,
+            p_note=p_note,
+        )
+
+    # Ref: UC-021 – Budgetzeiträume abrufen
+    def get_budget_periods(
+        self,
+        p_budget_source_id: int,
+    ) -> list[dict[str, str | int | float]]:
+        return self._budget_service.get_periods(p_budget_source_id=p_budget_source_id)
+
+    # Ref: UC-021 – Budgetzeitraum bearbeiten
+    def update_budget_period(
+        self,
+        p_period_id: int,
+        p_gueltig_ab: date,
+        p_betrag_eur: float,
+        p_gueltig_bis: date | None = None,
+        p_note: str | None = None,
+    ) -> None:
+        self._budget_service.update_period(
+            p_period_id=p_period_id,
+            p_gueltig_ab=p_gueltig_ab,
+            p_gueltig_bis=p_gueltig_bis,
+            p_betrag_eur=p_betrag_eur,
+            p_note=p_note,
+        )
+
+    # Ref: UC-021 – Budgetzeitraum entfernen
+    def delete_budget_period(self, p_period_id: int) -> None:
+        self._budget_service.delete_period(p_period_id=p_period_id)
+
+    # Ref: UC-021 – Budget am Tag
+    def get_budget_for_date(self, p_day: date) -> float:
+        return self._budget_service.get_budget_for_date(p_day=p_day)
+
+    # Ref: UC-021 – Budgetzeitachse anzeigen
+    def get_budget_timeline(
+        self,
+        p_from: date,
+        p_to: date,
+    ) -> list[dict[str, str | int | float]]:
+        return self._budget_service.get_budget_timeline(
+            p_from=p_from,
+            p_to=p_to,
+        )
 
     # Ref: UC-017 – Gehaltsgruppen verwalten
     def create_gehaltsgruppe(
