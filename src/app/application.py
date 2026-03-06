@@ -563,11 +563,6 @@ class Application:
                     p_day=booking_date,
                     p_slot=slot,
                 )))
-                if location_id == "GER":
-                    lnk_amount = base_rate * Decimal("0.25")
-                else:
-                    lnk_amount = Decimal("0")
-                rate = base_rate + lnk_amount
             except Exception:
                 rows.append(
                     {
@@ -576,13 +571,39 @@ class Application:
                         "task_name": str(entry["task_name"]),
                         "slot": slot,
                         "hours": "1",
+                        "group_amount": "0",
                         "rate_eur": "0",
+                        "lnk_eur": "0",
                         "cost_eur": "0",
                         "source_file": str(entry["source_file"]),
                         "status": "Ungültiger Buchungseintrag",
                     }
                 )
                 continue
+
+            if location_id == "GER":
+                lnk_amount = base_rate * Decimal("0.25")
+                shift_base = base_rate
+                gehaltsgruppe_amount = Decimal("0")
+            else:
+                gehaltsgruppe_amount = Decimal("0")
+                assignment = self._mitarbeiter_gehaltsgruppe_service.get_assignment_at(
+                    p_mitarbeiter_id=int(analyst.id),
+                    p_stichtag=booking_date,
+                )
+                if assignment is not None:
+                    amount = self._gehaltsgruppe_service.get_betrag_am_stichtag(
+                        p_group_id=int(assignment["gehaltsgruppe_id"]),
+                        p_stichtag=booking_date,
+                    )
+                    if amount is not None:
+                        gehaltsgruppe_amount = Decimal(str(amount))
+
+                day_type = self._compensation_service.determine_day_type(booking_date)
+                is_weekend = day_type in ("SATURDAY", "SUNDAY_OR_HOLIDAY")
+                lnk_amount = gehaltsgruppe_amount * Decimal("4") if is_weekend else Decimal("0")
+                shift_base = Decimal("6")
+                gehaltsgruppe_amount = gehaltsgruppe_amount
 
             rows.append(
                 {
@@ -591,9 +612,10 @@ class Application:
                     "task_name": str(entry["task_name"]),
                     "slot": slot,
                     "hours": "1",
-                    "rate_eur": self._compensation_service._format_hours(base_rate),
+                    "group_amount": self._compensation_service._format_hours(gehaltsgruppe_amount),
+                    "rate_eur": self._compensation_service._format_hours(shift_base),
                     "lnk_eur": self._compensation_service._format_hours(lnk_amount),
-                    "cost_eur": self._compensation_service._format_hours(rate),
+                    "cost_eur": self._compensation_service._format_hours(shift_base + lnk_amount),
                     "source_file": str(entry["source_file"]),
                 }
             )

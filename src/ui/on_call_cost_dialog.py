@@ -67,18 +67,7 @@ class OnCallCostDialog(QDialog):
         self._table.setSelectionBehavior(QTableWidget.SelectRows)
         self._table.setSelectionMode(QTableWidget.SingleSelection)
         self._table.setColumnCount(8)
-        self._table.setHorizontalHeaderLabels(
-            [
-                "Buchungsdatum",
-                "Buchungsname",
-                "Task",
-                "Slot",
-                "Einheiten",
-                "Stundensatz (EUR)",
-                "Lohnnebenkosten (EUR)",
-                "Kosten (EUR)",
-            ]
-        )
+        self._set_table_headers()
         layout.addWidget(self._table)
 
         self._total_label = QLabel("Gesamt (berechnet): 0 EUR")
@@ -140,6 +129,7 @@ class OnCallCostDialog(QDialog):
         self._current_year = int(year_data)
         self._current_month = int(month_data)
         self._current_location_filter = location_filter
+        self._set_table_headers()
 
         rows = self._application.get_on_call_costs_for_month(
             p_year=self._current_year,
@@ -150,16 +140,29 @@ class OnCallCostDialog(QDialog):
         self._table.setRowCount(len(rows))
         total_cost = Decimal("0")
         for row_index, row_data in enumerate(rows):
-            values = [
-                str(row_data.get("booking_date", "")),
-                str(row_data.get("buchungsname", "")),
-                str(row_data.get("task_name", "")),
-                str(row_data.get("slot", "")),
-                str(row_data.get("hours", "")),
-                str(row_data.get("rate_eur", "")),
-                str(row_data.get("lnk_eur", "0")),
-                str(row_data.get("cost_eur", "")),
-            ]
+            if self._current_location_filter == "IND":
+                values = [
+                    str(row_data.get("booking_date", "")),
+                    str(row_data.get("buchungsname", "")),
+                    str(row_data.get("task_name", "")),
+                    str(row_data.get("slot", "")),
+                    str(row_data.get("group_amount", "0")),
+                    str(row_data.get("hours", "")),
+                    str(row_data.get("rate_eur", "")),
+                    str(row_data.get("lnk_eur", "0")),
+                    str(row_data.get("cost_eur", "")),
+                ]
+            else:
+                values = [
+                    str(row_data.get("booking_date", "")),
+                    str(row_data.get("buchungsname", "")),
+                    str(row_data.get("task_name", "")),
+                    str(row_data.get("slot", "")),
+                    str(row_data.get("hours", "")),
+                    str(row_data.get("rate_eur", "")),
+                    str(row_data.get("lnk_eur", "0")),
+                    str(row_data.get("cost_eur", "")),
+                ]
             for col_index, value in enumerate(values):
                 self._table.setItem(row_index, col_index, QTableWidgetItem(value))
 
@@ -177,3 +180,35 @@ class OnCallCostDialog(QDialog):
         if "." in text:
             text = text.rstrip("0").rstrip(".")
         return text or "0"
+
+    def _set_table_headers(self) -> None:
+        if self._current_location_filter == "IND":
+            self._table.setColumnCount(9)
+            self._table.setHorizontalHeaderLabels(
+                [
+                    "Buchungsdatum",
+                    "Buchungsname",
+                    "Task",
+                    "Slot",
+                    "Gehaltsgruppenbetrag (EUR)",
+                    "Einheiten",
+                    "Schichtbasispreis (EUR)",
+                    "Arbeitszeitausgleich (EUR)",
+                    "Kosten (EUR)",
+                ]
+            )
+            return
+
+        self._table.setColumnCount(8)
+        self._table.setHorizontalHeaderLabels(
+            [
+                "Buchungsdatum",
+                "Buchungsname",
+                "Task",
+                "Slot",
+                "Einheiten",
+                "Stundensatz (EUR)",
+                "Lohnnebenkosten (EUR)",
+                "Kosten (EUR)",
+            ]
+        )
