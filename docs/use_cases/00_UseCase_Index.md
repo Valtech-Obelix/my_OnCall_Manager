@@ -20,6 +20,7 @@
 | UC-016 | Schichtplan-vs.-Buchungen um Task-Prüfung erweitern | abgeschlossen | 0.1     |
 | UC-017 | Gehaltsgruppen verwalten              | abgeschlossen | 0.1     |
 | UC-018 | Einfuehrung von Mitarbeitertypen      | abgeschlossen | 0.1     |
+| UC-019 | Zuordnung von Gehaltsklassen zu Mitarbeitern | abgeschlossen | 0.1     |
 
 ## Verknüpfte Änderungshistorie
 

@@ -14,11 +14,13 @@ class GehaltsgruppeService:
         p_bezeichnung: str,
         p_betrag: float,
         p_gueltig_ab: date,
+        p_oncall_location_id: str = "GER",
     ) -> Gehaltsgruppe:
         self._ensure_gueltig_ab(p_gueltig_ab)
         gehaltsgruppe = Gehaltsgruppe(
             p_id=None,
             p_bezeichnung=p_bezeichnung,
+            p_oncall_location_id=p_oncall_location_id,
         )
         initial_betrag = GehaltsgruppenBetrag(
             p_gehaltsgruppe_id=0,
@@ -55,6 +57,23 @@ class GehaltsgruppeService:
             raise DomainException(
                 "Fuer dieses gueltig-ab-Datum existiert bereits ein Betrag."
             ) from exc
+
+    def update_oncall_location(
+        self,
+        p_group_id: int,
+        p_oncall_location_id: str,
+    ) -> None:
+        if not self._repository.exists(int(p_group_id)):
+            raise DomainException("Gehaltsgruppe nicht gefunden.")
+
+        normalized_location = p_oncall_location_id.strip().upper()
+        if len(normalized_location) != 3:
+            raise DomainException("Standortkennung muss 3 Zeichen haben.")
+
+        self._repository.update_oncall_location(
+            p_group_id=int(p_group_id),
+            p_oncall_location_id=normalized_location,
+        )
 
     def get_betrag_am_stichtag(self, p_group_id: int, p_stichtag: date) -> float | None:
         if not self._repository.exists(int(p_group_id)):

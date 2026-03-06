@@ -21,11 +21,19 @@ def test_add_and_get_all(tmp_path) -> None:
     assert created.id is not None
     assert len(groups) == 1
     assert groups[0].bezeichnung == "G1"
+    assert groups[0].oncall_location_id == "GER"
 
 
 def test_get_betrag_am_stichtag_returns_valid_version(tmp_path) -> None:
     repository = _create_repository(tmp_path)
-    group = repository.add(Gehaltsgruppe(p_id=None, p_bezeichnung="Nachtdienst"))
+    group = repository.add(
+        Gehaltsgruppe(
+            p_id=None,
+            p_bezeichnung="Nachtdienst",
+            p_oncall_location_id="USA",
+        )
+    )
+    assert group.oncall_location_id == "USA"
 
     repository.add_betrag(
         GehaltsgruppenBetrag(
@@ -49,7 +57,14 @@ def test_get_betrag_am_stichtag_returns_valid_version(tmp_path) -> None:
 
 def test_get_betraege_returns_chronological_history(tmp_path) -> None:
     repository = _create_repository(tmp_path)
-    group = repository.add(Gehaltsgruppe(p_id=None, p_bezeichnung="Tagdienst"))
+    group = repository.add(
+        Gehaltsgruppe(
+            p_id=None,
+            p_bezeichnung="Tagdienst",
+            p_oncall_location_id="FRA",
+        )
+    )
+    assert group.oncall_location_id == "FRA"
 
     repository.add_betrag(
         GehaltsgruppenBetrag(
@@ -72,3 +87,20 @@ def test_get_betraege_returns_chronological_history(tmp_path) -> None:
         {"betrag": 90.0, "gueltig_ab": "2026-02-01"},
         {"betrag": 95.0, "gueltig_ab": "2026-04-01"},
     ]
+
+
+def test_update_oncall_location(tmp_path) -> None:
+    repository = _create_repository(tmp_path)
+    group = repository.add(
+        Gehaltsgruppe(
+            p_id=None,
+            p_bezeichnung="B",
+            p_oncall_location_id="GER",
+        )
+    )
+
+    repository.update_oncall_location(int(group.id), "USA")
+
+    updated_groups = repository.get_all()
+    assert len(updated_groups) == 1
+    assert updated_groups[0].oncall_location_id == "USA"
