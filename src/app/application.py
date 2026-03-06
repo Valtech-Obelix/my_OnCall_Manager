@@ -558,16 +558,16 @@ class Application:
             booking_date = date.fromisoformat(str(entry["booking_date"]))
             slot = str(entry["slot"])
             try:
-                rate = Decimal(str(self._compensation_service._calculate_amount_for_day_slot(
+                base_rate = Decimal(str(self._compensation_service._calculate_amount_for_day_slot(
                     p_oncall_location_id=location_id,
                     p_day=booking_date,
                     p_slot=slot,
                 )))
                 if location_id == "GER":
-                    rate = rate * Decimal("1.25")
-                    status_text = "Faktor 1.25 (GER Lohnnebenkosten)"
+                    lnk_amount = base_rate * Decimal("0.25")
                 else:
-                    status_text = ""
+                    lnk_amount = Decimal("0")
+                rate = base_rate + lnk_amount
             except Exception:
                 rows.append(
                     {
@@ -591,10 +591,10 @@ class Application:
                     "task_name": str(entry["task_name"]),
                     "slot": slot,
                     "hours": "1",
-                    "rate_eur": self._compensation_service._format_hours(rate),
+                    "rate_eur": self._compensation_service._format_hours(base_rate),
+                    "lnk_eur": self._compensation_service._format_hours(lnk_amount),
                     "cost_eur": self._compensation_service._format_hours(rate),
                     "source_file": str(entry["source_file"]),
-                    "status": status_text,
                 }
             )
 

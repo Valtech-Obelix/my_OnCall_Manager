@@ -75,8 +75,8 @@ class OnCallCostDialog(QDialog):
                 "Slot",
                 "Einheiten",
                 "Stundensatz (EUR)",
+                "Lohnnebenkosten (EUR)",
                 "Kosten (EUR)",
-                "Status",
             ]
         )
         layout.addWidget(self._table)
@@ -157,8 +157,8 @@ class OnCallCostDialog(QDialog):
                 str(row_data.get("slot", "")),
                 str(row_data.get("hours", "")),
                 str(row_data.get("rate_eur", "")),
+                str(row_data.get("lnk_eur", "0")),
                 str(row_data.get("cost_eur", "")),
-                str(row_data.get("status", "")),
             ]
             for col_index, value in enumerate(values):
                 self._table.setItem(row_index, col_index, QTableWidgetItem(value))
