@@ -510,6 +510,92 @@ class Application:
         rows.sort(key=lambda row: (str(row.get("buchungsname", "")), str(row.get("booking_date", ""))))
         return rows
 
+    def get_on_call_costs_for_month(
+        self,
+        p_year: int,
+        p_month: int,
+        p_location_filter: str | None = None,
+    ) -> list[dict[str, str]]:
+        entries = self._compensation_service.load_monthly_booking_entries(
+            p_year=p_year,
+            p_month=p_month,
+        )
+        analysts = self.get_all_incident_analysts()
+
+        analysts_by_name = {
+            self._compensation_service._normalize_person_name(str(analyst.buchungsname)): analyst
+            for analyst in analysts
+        }
+
+        location_filter = p_location_filter.strip().upper() if p_location_filter else None
+        rows: list[dict[str, str]] = []
+
+        for entry in entries:
+            analyst = analysts_by_name.get(
+                self._compensation_service._normalize_person_name(str(entry["user"]))
+            )
+            if analyst is None:
+                booking_date = date.fromisoformat(str(entry["booking_date"]))
+                rows.append(
+                    {
+                        "booking_date": booking_date.strftime("%d.%m.%Y"),
+                        "buchungsname": str(entry["user"]),
+                        "task_name": str(entry["task_name"]),
+                        "slot": str(entry["slot"]),
+                        "hours": "1",
+                        "rate_eur": "0",
+                        "cost_eur": "0",
+                        "source_file": str(entry["source_file"]),
+                        "status": "Mitarbeiter nicht gefunden",
+                    }
+                )
+                continue
+
+            location_id = str(analyst.oncall_location_id).strip().upper()
+            if location_filter and location_id != location_filter:
+                continue
+
+            booking_date = date.fromisoformat(str(entry["booking_date"]))
+            slot = str(entry["slot"])
+            try:
+                rate = Decimal(str(self._compensation_service._calculate_amount_for_day_slot(
+                    p_oncall_location_id=location_id,
+                    p_day=booking_date,
+                    p_slot=slot,
+                )))
+            except Exception:
+                rows.append(
+                    {
+                        "booking_date": booking_date.strftime("%d.%m.%Y"),
+                        "buchungsname": str(analyst.buchungsname),
+                        "task_name": str(entry["task_name"]),
+                        "slot": slot,
+                        "hours": "1",
+                        "rate_eur": "0",
+                        "cost_eur": "0",
+                        "source_file": str(entry["source_file"]),
+                        "status": "Ungültiger Buchungseintrag",
+                    }
+                )
+                continue
+
+            rows.append(
+                {
+                    "booking_date": booking_date.strftime("%d.%m.%Y"),
+                    "buchungsname": str(analyst.buchungsname),
+                    "task_name": str(entry["task_name"]),
+                    "slot": slot,
+                    "hours": "1",
+                    "rate_eur": self._compensation_service._format_hours(rate),
+                    "cost_eur": self._compensation_service._format_hours(rate),
+                    "source_file": str(entry["source_file"]),
+                    "status": "",
+                }
+            )
+
+        rows.sort(key=lambda row: (str(row.get("buchungsname", "")), str(row.get("booking_date", ""))))
+        return rows
+
     # Ref: UC-009 – zuletzt verwendeten n-Wert persistieren
     def get_last_shift_count_weeks(self) -> int:
         value = self._shift_repository.get_setting("last_shift_count_weeks")
