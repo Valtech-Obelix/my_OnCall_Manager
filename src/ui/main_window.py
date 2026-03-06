@@ -117,21 +117,21 @@ class MainWindow(QMainWindow):
         file_menu.addAction(action_close)
 
         management_menu = menu_bar.addMenu("Verwaltung")
+        action_oncall_locations = QAction(ACTION_VIEW_ONCALL_LOCATIONS, self)
+        action_oncall_locations.triggered.connect(self._open_oncall_location_dialog)
+        management_menu.addAction(action_oncall_locations)
+
         action_manage_gehaltsgruppen = QAction(ACTION_MANAGE_GEHALTSGRUPPEN, self)
         action_manage_gehaltsgruppen.triggered.connect(self._open_gehaltsgruppe_dialog)
         management_menu.addAction(action_manage_gehaltsgruppen)
-
-        action_manage_budgets = QAction(ACTION_MANAGE_BUDGETS, self)
-        action_manage_budgets.triggered.connect(self._open_budget_management_dialog)
-        management_menu.addAction(action_manage_budgets)
 
         action_manage_analysts = QAction(ACTION_MANAGE_ANALYSTS, self)
         action_manage_analysts.triggered.connect(self._open_incident_analyst_dialog)
         management_menu.addAction(action_manage_analysts)
 
-        action_oncall_locations = QAction(ACTION_VIEW_ONCALL_LOCATIONS, self)
-        action_oncall_locations.triggered.connect(self._open_oncall_location_dialog)
-        management_menu.addAction(action_oncall_locations)
+        action_manage_budgets = QAction(ACTION_MANAGE_BUDGETS, self)
+        action_manage_budgets.triggered.connect(self._open_budget_management_dialog)
+        management_menu.addAction(action_manage_budgets)
 
         shift_menu = menu_bar.addMenu("Schichtplan")
         action_import_shifts = QAction(ACTION_IMPORT_SHIFTS, self)

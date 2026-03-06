@@ -704,7 +704,7 @@ class Application:
         p_budget_source_id: int,
         p_gueltig_ab: date,
         p_betrag_eur: float,
-        p_gueltig_bis: date | None = None,
+        p_gueltig_bis: date,
         p_note: str | None = None,
     ) -> int:
         return self._budget_service.create_period(
@@ -728,7 +728,7 @@ class Application:
         p_period_id: int,
         p_gueltig_ab: date,
         p_betrag_eur: float,
-        p_gueltig_bis: date | None = None,
+        p_gueltig_bis: date,
         p_note: str | None = None,
     ) -> None:
         self._budget_service.update_period(

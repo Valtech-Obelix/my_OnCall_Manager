@@ -29,6 +29,7 @@ def test_budget_source_crud_and_period_aggregation(tmp_path) -> None:
     service.create_period(
         p_budget_source_id=source_id,
         p_gueltig_ab=date(2026, 4, 1),
+        p_gueltig_bis=date(2026, 12, 31),
         p_betrag_eur=150.0,
     )
 
@@ -74,6 +75,7 @@ def test_budget_validation_rules(tmp_path) -> None:
         service.create_period(
             p_budget_source_id=source_id,
             p_gueltig_ab=date(2026, 6, 1),
+            p_gueltig_bis=date(2026, 6, 30),
             p_betrag_eur=-5.0,
         )
 
@@ -81,6 +83,7 @@ def test_budget_validation_rules(tmp_path) -> None:
         service.create_period(
             p_budget_source_id=999,
             p_gueltig_ab=date(2026, 6, 1),
+            p_gueltig_bis=date(2026, 6, 30),
             p_betrag_eur=5.0,
         )
 

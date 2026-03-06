@@ -197,13 +197,13 @@ class Database:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 budget_source_id INTEGER NOT NULL,
                 gueltig_ab TEXT NOT NULL,
-                gueltig_bis TEXT,
+                gueltig_bis TEXT NOT NULL,
                 betrag_eur REAL NOT NULL CHECK (betrag_eur >= 0),
                 note TEXT,
                 FOREIGN KEY (budget_source_id)
                     REFERENCES budget_source (id)
                     ON DELETE CASCADE,
-                CHECK (gueltig_bis IS NULL OR gueltig_bis >= gueltig_ab)
+                CHECK (gueltig_bis >= gueltig_ab)
             )
             '''
         )
@@ -213,6 +213,7 @@ class Database:
             ON budget_period (budget_source_id, gueltig_ab)
             '''
         )
+        self._ensure_budget_period_gueltig_bis_is_required()
 
         # Ref: UC-011 v0.1 – Rufbereitschaftsstandorte
         cursor.execute(
@@ -236,6 +237,70 @@ class Database:
         cursor.execute("DROP TABLE IF EXISTS budget_cost_rate")
 
         self._connection.commit()
+
+    def _ensure_budget_period_gueltig_bis_is_required(self) -> None:
+        cursor = self._connection.cursor()
+        cursor.execute("PRAGMA table_info(budget_period)")
+        columns = cursor.fetchall()
+        if not columns:
+            return
+
+        gueltig_bis_notnull = False
+        for column in columns:
+            if column[1] == "gueltig_bis":
+                gueltig_bis_notnull = bool(column[3])
+                break
+        if gueltig_bis_notnull:
+            return
+
+        cursor.execute(
+            """
+            ALTER TABLE budget_period RENAME TO budget_period_legacy_uc021
+            """
+        )
+        cursor.execute(
+            '''
+            CREATE TABLE budget_period (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                budget_source_id INTEGER NOT NULL,
+                gueltig_ab TEXT NOT NULL,
+                gueltig_bis TEXT NOT NULL,
+                betrag_eur REAL NOT NULL CHECK (betrag_eur >= 0),
+                note TEXT,
+                FOREIGN KEY (budget_source_id)
+                    REFERENCES budget_source (id)
+                    ON DELETE CASCADE,
+                CHECK (gueltig_bis >= gueltig_ab)
+            )
+            '''
+        )
+        cursor.execute(
+            '''
+            INSERT INTO budget_period (
+                id,
+                budget_source_id,
+                gueltig_ab,
+                gueltig_bis,
+                betrag_eur,
+                note
+            )
+            SELECT
+                id,
+                budget_source_id,
+                gueltig_ab,
+                COALESCE(gueltig_bis, '9999-12-31'),
+                betrag_eur,
+                note
+            FROM budget_period_legacy_uc021
+            '''
+        )
+        cursor.execute("DROP TABLE budget_period_legacy_uc021")
+        cursor.execute(
+            '''
+            CREATE INDEX IF NOT EXISTS idx_budget_period_source_from
+            ON budget_period (budget_source_id, gueltig_ab)
+            '''
+        )
 
     def _ensure_incident_analyst_opsgenie_id_column(self):
         cursor = self._connection.cursor()

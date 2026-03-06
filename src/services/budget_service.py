@@ -58,7 +58,7 @@ class BudgetService:
         p_budget_source_id: int,
         p_gueltig_ab: date,
         p_betrag_eur: float,
-        p_gueltig_bis: date | None = None,
+        p_gueltig_bis: date,
         p_note: str | None = None,
     ) -> int:
         source_id = int(p_budget_source_id)
@@ -73,7 +73,7 @@ class BudgetService:
             return self._repository.add_period(
                 p_budget_source_id=source_id,
                 p_gueltig_ab=p_gueltig_ab.isoformat(),
-                p_gueltig_bis=(p_gueltig_bis.isoformat() if p_gueltig_bis else None),
+                p_gueltig_bis=p_gueltig_bis.isoformat(),
                 p_betrag_eur=float(p_betrag_eur),
                 p_note=p_note,
             )
@@ -87,7 +87,7 @@ class BudgetService:
         p_period_id: int,
         p_gueltig_ab: date,
         p_betrag_eur: float,
-        p_gueltig_bis: date | None = None,
+        p_gueltig_bis: date,
         p_note: str | None = None,
     ) -> None:
         period_id = int(p_period_id)
@@ -102,7 +102,7 @@ class BudgetService:
         self._repository.update_period(
             p_period_id=period_id,
             p_gueltig_ab=p_gueltig_ab.isoformat(),
-            p_gueltig_bis=(p_gueltig_bis.isoformat() if p_gueltig_bis else None),
+            p_gueltig_bis=p_gueltig_bis.isoformat(),
             p_betrag_eur=float(p_betrag_eur),
             p_note=p_note,
         )
@@ -133,8 +133,7 @@ class BudgetService:
         if p_from > p_to:
             raise DomainException("Startdatum darf nicht nach dem Enddatum liegen.")
 
-        cursor = p_from
-        first_day = date(cursor.year, cursor.month, 1)
+        first_day = date(p_from.year, p_from.month, 1)
         last_day = p_to
         result: list[dict[str, str | int | float]] = []
         while first_day <= last_day:
@@ -142,10 +141,23 @@ class BudgetService:
             if month_end > p_to:
                 month_end = p_to
 
-            amount = self._repository.get_budget_amount_for_date_range(
+            amount = 0.0
+            periods = self._repository.get_active_periods_in_range(
                 p_from=first_day.isoformat(),
                 p_to=month_end.isoformat(),
             )
+
+            for period in periods:
+                period_start = date.fromisoformat(str(period.get("gueltig_ab")))
+                period_end = date.fromisoformat(str(period.get("gueltig_bis")))
+                duration_months = self._months_between_inclusive(
+                    period_start,
+                    period_end,
+                )
+                if duration_months <= 0:
+                    continue
+                amount += float(period.get("betrag_eur", 0.0)) / float(duration_months)
+
             result.append(
                 {
                     "from_date": first_day.isoformat(),
@@ -171,11 +183,15 @@ class BudgetService:
         if self._repository.get_period(p_period_id) is None:
             raise DomainException("Budgetzeitraum nicht gefunden.")
 
-    def _ensure_date_order(self, p_from: date, p_to: date | None) -> None:
-        if p_to is not None and p_to < p_from:
+    def _ensure_date_order(self, p_from: date, p_to: date) -> None:
+        if p_to < p_from:
             raise DomainException("Enddatum darf nicht vor dem Startdatum liegen.")
 
     @staticmethod
     def _month_end(p_month_start: date) -> date:
         month_end = (p_month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
         return month_end
+
+    @staticmethod
+    def _months_between_inclusive(p_start: date, p_end: date) -> int:
+        return (p_end.year - p_start.year) * 12 + (p_end.month - p_start.month) + 1

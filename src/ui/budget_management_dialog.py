@@ -1,6 +1,15 @@
-from datetime import date, datetime
+from datetime import date
 
-from PySide6.QtCore import Qt
+from PySide6.QtCharts import (
+    QBarCategoryAxis,
+    QBarSeries,
+    QBarSet,
+    QChart,
+    QChartView,
+    QValueAxis,
+)
+from PySide6.QtGui import QPainter
+from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -8,6 +17,8 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QSizePolicy,
+    QDateEdit,
     QLineEdit,
     QMessageBox,
     QPushButton,
@@ -33,6 +44,8 @@ class BudgetManagementDialog(QDialog):
         self._selected_period_id: int | None = None
         self._is_source_edit_mode = False
         self._is_period_edit_mode = False
+        self._timeline_chart = QChart()
+        self._timeline_chart_view = QChartView(self._timeline_chart)
 
         self._setup_ui()
         self._refresh_sources()
@@ -70,7 +83,7 @@ class BudgetManagementDialog(QDialog):
         self.setLayout(layout)
 
     def _build_source_section(self) -> QWidget:
-        section = QGroupBox("Budgetquellen")
+        section = QGroupBox("Kunden")
         layout = QVBoxLayout()
 
         self._source_table = QTableWidget()
@@ -91,9 +104,13 @@ class BudgetManagementDialog(QDialog):
 
         form = QFormLayout()
         self._source_name_input = QLineEdit()
+        self._source_name_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self._source_active_input = QCheckBox("Aktiv")
         self._source_active_input.setChecked(True)
-        form.addRow("Name:", self._source_name_input)
+        form.setLabelAlignment(Qt.AlignLeft)
+        form.setFormAlignment(Qt.AlignLeft)
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        form.addRow("Kunde:", self._source_name_input)
         form.addRow("Status:", self._source_active_input)
         layout.addLayout(form)
 
@@ -117,17 +134,17 @@ class BudgetManagementDialog(QDialog):
         return section
 
     def _build_period_section(self) -> QWidget:
-        section = QGroupBox("Budgetzeiträume")
+        section = QGroupBox("Verträge")
         layout = QVBoxLayout()
 
         self._period_table = QTableWidget()
         self._period_table.setColumnCount(5)
         self._period_table.setHorizontalHeaderLabels([
             "ID",
+            "Vertragstitel",
             "Gueltig ab",
             "Gueltig bis",
             "Betrag EUR",
-            "Notiz",
         ])
         self._period_table.setSelectionBehavior(self._period_table.SelectionBehavior.SelectRows)
         self._period_table.setSelectionMode(self._period_table.SelectionMode.SingleSelection)
@@ -136,17 +153,37 @@ class BudgetManagementDialog(QDialog):
         layout.addWidget(self._period_table)
 
         form = QFormLayout()
-        self._period_from_input = QLineEdit()
-        self._period_to_input = QLineEdit()
-        self._period_amount_input = QLineEdit()
+        form.setLabelAlignment(Qt.AlignLeft)
+        form.setFormAlignment(Qt.AlignLeft)
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+
         self._period_note_input = QLineEdit()
-        self._period_from_input.setPlaceholderText("tt.mm.jjjj")
-        self._period_to_input.setPlaceholderText("tt.mm.jjjj (optional)")
+        self._period_note_input.setPlaceholderText("Vertragstitel")
+        self._period_note_input.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self._period_from_input = QDateEdit()
+        self._period_from_input.setCalendarPopup(True)
+        self._period_from_input.setDisplayFormat("dd.MM.yyyy")
+        self._period_from_input.setDate(QDate.currentDate())
+        self._period_to_input = QDateEdit()
+        self._period_to_input.setCalendarPopup(True)
+        self._period_to_input.setDisplayFormat("dd.MM.yyyy")
+        self._period_to_input.setDate(QDate.currentDate())
+        self._period_amount_input = QLineEdit()
         self._period_amount_input.setPlaceholderText("z.B. 1200.00")
-        form.addRow("Beginn:", self._period_from_input)
-        form.addRow("Ende:", self._period_to_input)
+        self._period_amount_input.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+        date_range_layout = QHBoxLayout()
+        date_range_layout.addWidget(QLabel("Beginn:"))
+        date_range_layout.addWidget(self._period_from_input)
+        date_range_layout.addWidget(QLabel("Ende:"))
+        date_range_layout.addWidget(self._period_to_input)
+        date_range_layout.addStretch()
+
+        form.addRow("Vertragstitel:", self._period_note_input)
+        form.addRow("", date_range_layout)
         form.addRow("Betrag:", self._period_amount_input)
-        form.addRow("Notiz:", self._period_note_input)
         layout.addLayout(form)
 
         button_row = QHBoxLayout()
@@ -189,16 +226,9 @@ class BudgetManagementDialog(QDialog):
         form.addStretch()
         layout.addLayout(form)
 
-        self._timeline_table = QTableWidget()
-        self._timeline_table.setColumnCount(4)
-        self._timeline_table.setHorizontalHeaderLabels(["Monat", "Von", "Bis", "Gesamtbudget (EUR)"])
-        self._timeline_table.setEditTriggers(self._timeline_table.EditTrigger.NoEditTriggers)
-        self._timeline_table.setSelectionBehavior(self._timeline_table.SelectionBehavior.SelectRows)
-        self._timeline_table.setSelectionMode(self._timeline_table.SelectionMode.NoSelection)
-        layout.addWidget(self._timeline_table)
-
-        self._timeline_total_label = QLabel("Gesamtsumme im Zeitraum: 0 EUR")
-        layout.addWidget(self._timeline_total_label)
+        self._timeline_chart_view.setRenderHint(QPainter.Antialiasing, True)
+        self._timeline_chart_view.setMinimumHeight(430)
+        layout.addWidget(self._timeline_chart_view)
         return layout
 
     # ------------------------------------------------------------------
@@ -337,10 +367,10 @@ class BudgetManagementDialog(QDialog):
         self._period_table.setRowCount(len(periods))
         for row_index, period in enumerate(periods):
             self._period_table.setItem(row_index, 0, QTableWidgetItem(str(period["id"])))
-            self._period_table.setItem(row_index, 1, QTableWidgetItem(str(period["gueltig_ab"])))
-            self._period_table.setItem(row_index, 2, QTableWidgetItem(str(period["gueltig_bis"])))
-            self._period_table.setItem(row_index, 3, QTableWidgetItem(str(period["betrag_eur"])))
-            self._period_table.setItem(row_index, 4, QTableWidgetItem(str(period["note"])))
+            self._period_table.setItem(row_index, 1, QTableWidgetItem(str(period["note"])))
+            self._period_table.setItem(row_index, 2, QTableWidgetItem(str(period["gueltig_ab"])))
+            self._period_table.setItem(row_index, 3, QTableWidgetItem(str(period["gueltig_bis"])))
+            self._period_table.setItem(row_index, 4, QTableWidgetItem(str(period["betrag_eur"])))
         self._period_table.resizeColumnsToContents()
         self._period_table.clearSelection()
         self._selected_period_id = None
@@ -352,10 +382,10 @@ class BudgetManagementDialog(QDialog):
         if row < 0:
             return
         period_id_item = self._period_table.item(row, 0)
-        from_item = self._period_table.item(row, 1)
-        to_item = self._period_table.item(row, 2)
-        amount_item = self._period_table.item(row, 3)
-        note_item = self._period_table.item(row, 4)
+        note_item = self._period_table.item(row, 1)
+        from_item = self._period_table.item(row, 2)
+        to_item = self._period_table.item(row, 3)
+        amount_item = self._period_table.item(row, 4)
         if (
             period_id_item is None
             or from_item is None
@@ -364,11 +394,12 @@ class BudgetManagementDialog(QDialog):
         ):
             return
         self._selected_period_id = int(period_id_item.text())
-        self._period_from_input.setText(self._iso_to_display_date(from_item.text()))
-        self._period_to_input.setText(self._iso_to_display_date(to_item.text()))
-        self._period_amount_input.setText(str(amount_item.text()))
         self._period_note_input.setText(str(note_item.text() if note_item is not None else ""))
-        self._set_period_fields_enabled(False)
+        self._period_from_input.setDate(QDate.fromString(from_item.text(), "yyyy-MM-dd"))
+        self._period_to_input.setDate(QDate.fromString(to_item.text(), "yyyy-MM-dd"))
+        self._period_amount_input.setText(str(amount_item.text()))
+        self._is_period_edit_mode = False
+        self._set_period_fields_enabled(True)
         self._set_primary_button(self._period_edit_button)
 
     def _on_period_new_clicked(self) -> None:
@@ -376,11 +407,11 @@ class BudgetManagementDialog(QDialog):
             QMessageBox.information(self, APP_TITLE, "Bitte zuerst eine Budgetquelle auswählen.")
             return
         self._selected_period_id = None
-        self._is_period_edit_mode = False
+        self._is_period_edit_mode = True
         self._clear_period_form()
         self._set_period_fields_enabled(True)
         self._set_primary_button(self._period_save_button)
-        self._period_from_input.setFocus()
+        self._period_note_input.setFocus()
 
     def _on_period_edit_clicked(self) -> None:
         if self._selected_period_id is None:
@@ -389,18 +420,26 @@ class BudgetManagementDialog(QDialog):
         self._is_period_edit_mode = True
         self._set_period_fields_enabled(True)
         self._set_primary_button(self._period_save_button)
-        self._period_from_input.setFocus()
+        self._period_note_input.setFocus()
 
     def _on_period_save_clicked(self) -> None:
         if self._selected_source_id is None:
             QMessageBox.information(self, APP_TITLE, "Bitte zuerst eine Budgetquelle auswählen.")
             return
         try:
-            period_from = self._parse_date(self._period_from_input.text())
-            period_to = self._parse_date(self._period_to_input.text()) if self._period_to_input.text().strip() else None
+            period_from = date(
+                self._period_from_input.date().year(),
+                self._period_from_input.date().month(),
+                self._period_from_input.date().day(),
+            )
+            period_to = date(
+                self._period_to_input.date().year(),
+                self._period_to_input.date().month(),
+                self._period_to_input.date().day(),
+            )
             amount = self._parse_amount(self._period_amount_input.text())
             note = self._period_note_input.text().strip() or None
-        except (DomainException, ValueError) as exc:
+        except DomainException as exc:
             QMessageBox.warning(self, APP_TITLE, str(exc))
             return
 
@@ -466,21 +505,39 @@ class BudgetManagementDialog(QDialog):
             p_from=date(year_from, 1, 1),
             p_to=date(year_to, 12, 31),
         )
-        self._timeline_table.setRowCount(len(rows))
-        total = 0.0
-        for row_index, row in enumerate(rows):
-            amount = float(row.get("amount_eur", 0))
-            total += amount
-            values = [
-                str(row.get("label", "")),
-                str(row.get("from_date", "")),
-                str(row.get("to_date", "")),
-                f"{amount:.2f}",
-            ]
-            for col_index, value in enumerate(values):
-                self._timeline_table.setItem(row_index, col_index, QTableWidgetItem(value))
-        self._timeline_table.resizeColumnsToContents()
-        self._timeline_total_label.setText(f"Gesamtsumme im Zeitraum: {total:.2f} EUR")
+        self._timeline_chart.removeAllSeries()
+        axis_x_existing = self._timeline_chart.axisX()
+        if axis_x_existing is not None:
+            self._timeline_chart.removeAxis(axis_x_existing)
+        axis_y_existing = self._timeline_chart.axisY()
+        if axis_y_existing is not None:
+            self._timeline_chart.removeAxis(axis_y_existing)
+
+        self._timeline_chart.setTitle("Monatsbudgetverlauf")
+        self._timeline_chart.legend().setVisible(False)
+
+        categories = [str(row.get("label", "")) for row in rows]
+        values = [float(row.get("amount_eur", 0.0)) for row in rows]
+
+        bar_set = QBarSet("Budget")
+        for value in values:
+            bar_set.append(value)
+        series = QBarSeries()
+        series.append(bar_set)
+        self._timeline_chart.addSeries(series)
+
+        axis_x = QBarCategoryAxis()
+        axis_x.append(categories)
+        self._timeline_chart.addAxis(axis_x, Qt.AlignBottom)
+        series.attachAxis(axis_x)
+
+        max_value = max(values) if values else 0.0
+        axis_y = QValueAxis()
+        axis_y.setLabelFormat("%.2f EUR")
+        axis_y.setRange(0.0, max(1.0, max_value))
+        axis_y.setMinorTickCount(0)
+        self._timeline_chart.addAxis(axis_y, Qt.AlignLeft)
+        series.attachAxis(axis_y)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -496,8 +553,8 @@ class BudgetManagementDialog(QDialog):
 
     def _clear_period_form(self) -> None:
         self._selected_period_id = None
-        self._period_from_input.clear()
-        self._period_to_input.clear()
+        self._period_from_input.setDate(QDate.currentDate())
+        self._period_to_input.setDate(QDate.currentDate())
         self._period_amount_input.clear()
         self._period_note_input.clear()
         self._period_table.clearSelection()
@@ -507,14 +564,19 @@ class BudgetManagementDialog(QDialog):
         self._source_active_input.setEnabled(p_enabled)
 
     def _set_period_fields_enabled(self, p_enabled: bool) -> None:
-        self._period_from_input.setEnabled(p_enabled)
-        self._period_to_input.setEnabled(p_enabled)
-        self._period_amount_input.setEnabled(p_enabled)
-        self._period_note_input.setEnabled(p_enabled)
-        self._period_new_button.setEnabled(p_enabled)
-        self._period_edit_button.setEnabled(p_enabled and self._selected_period_id is not None)
-        self._period_save_button.setEnabled(p_enabled)
-        self._period_delete_button.setEnabled(p_enabled and self._selected_period_id is not None)
+        fields_enabled = p_enabled and self._is_period_edit_mode
+        self._period_from_input.setEnabled(fields_enabled)
+        self._period_to_input.setEnabled(fields_enabled)
+        self._period_amount_input.setEnabled(fields_enabled)
+        self._period_note_input.setEnabled(fields_enabled)
+        self._period_new_button.setEnabled(p_enabled and not self._is_period_edit_mode)
+        self._period_edit_button.setEnabled(
+            p_enabled and self._selected_period_id is not None and not self._is_period_edit_mode
+        )
+        self._period_save_button.setEnabled(p_enabled and self._is_period_edit_mode)
+        self._period_delete_button.setEnabled(
+            p_enabled and self._selected_period_id is not None and not self._is_period_edit_mode
+        )
 
     def _set_primary_button(self, p_button: QPushButton) -> None:
         for button in (
@@ -531,21 +593,6 @@ class BudgetManagementDialog(QDialog):
         p_button.setAutoDefault(True)
 
     @staticmethod
-    def _parse_date(p_text: str) -> date:
-        text = p_text.strip()
-        if not text:
-            raise DomainException("Gueltig-ab ist erforderlich.")
-        try:
-            parsed = datetime.strptime(text, "%d.%m.%Y")
-            return parsed.date()
-        except ValueError:
-            try:
-                parsed = datetime.strptime(text, "%d.%m.%y")
-                return parsed.date()
-            except ValueError as exc:
-                raise ValueError("Datum muss das Format tt.mm.jjjj oder tt.mm.jj haben.") from exc
-
-    @staticmethod
     def _parse_amount(p_text: str) -> float:
         text = p_text.strip().replace(",", ".")
         if not text:
@@ -557,12 +604,3 @@ class BudgetManagementDialog(QDialog):
         if value < 0:
             raise DomainException("Betrag darf nicht negativ sein.")
         return value
-
-    @staticmethod
-    def _iso_to_display_date(p_iso_date: str) -> str:
-        if not p_iso_date:
-            return ""
-        try:
-            return datetime.strptime(p_iso_date, "%Y-%m-%d").strftime("%d.%m.%Y")
-        except ValueError:
-            return p_iso_date

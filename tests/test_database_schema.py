@@ -263,6 +263,11 @@ def test_initialize_schema_creates_budget_period_table(tmp_path) -> None:
         row[1]: row[2] for row in connection.execute("PRAGMA index_list(budget_period)").fetchall()
     }
     assert any("idx_budget_period_source_from" in name for name in indexes)
+    gueltig_bis_notnull = {
+        row[1]: row[3]
+        for row in table_info
+    }
+    assert gueltig_bis_notnull["gueltig_bis"] == 1
 
     database.close()
 

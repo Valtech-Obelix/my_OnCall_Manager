@@ -104,7 +104,7 @@ class BudgetRepository:
         self,
         p_budget_source_id: int,
         p_gueltig_ab: str,
-        p_gueltig_bis: str | None,
+        p_gueltig_bis: str,
         p_betrag_eur: float,
         p_note: str | None = None,
     ) -> int:
@@ -151,7 +151,7 @@ class BudgetRepository:
             "id": int(row[0]),
             "budget_source_id": int(row[1]),
             "gueltig_ab": str(row[2]),
-            "gueltig_bis": str(row[3]) if row[3] is not None else "",
+            "gueltig_bis": str(row[3]),
             "betrag_eur": float(row[4]),
             "note": str(row[5]) if row[5] is not None else "",
             "budget_source_name": str(row[6]),
@@ -183,7 +183,7 @@ class BudgetRepository:
                     "id": int(row[0]),
                     "budget_source_id": int(row[1]),
                     "gueltig_ab": str(row[2]),
-                    "gueltig_bis": str(row[3]) if row[3] is not None else "",
+                    "gueltig_bis": str(row[3]),
                     "betrag_eur": float(row[4]),
                     "note": str(row[5]) if row[5] is not None else "",
                     "budget_source_name": str(row[6]),
@@ -195,7 +195,7 @@ class BudgetRepository:
         self,
         p_period_id: int,
         p_gueltig_ab: str,
-        p_gueltig_bis: str | None,
+        p_gueltig_bis: str,
         p_betrag_eur: float,
         p_note: str | None = None,
     ) -> None:
@@ -235,7 +235,7 @@ class BudgetRepository:
             JOIN {TABLE_SOURCE} bs
               ON bs.id = bp.budget_source_id
             WHERE bp.gueltig_ab <= ?
-              AND (bp.gueltig_bis IS NULL OR bp.gueltig_bis >= ?)
+              AND bp.gueltig_bis >= ?
         """
         params = [p_date, p_date]
         if p_only_active_sources:
@@ -257,7 +257,7 @@ class BudgetRepository:
             JOIN {TABLE_SOURCE} bs
               ON bs.id = bp.budget_source_id
             WHERE bp.gueltig_ab <= ?
-              AND (bp.gueltig_bis IS NULL OR bp.gueltig_bis >= ?)
+              AND bp.gueltig_bis >= ?
         """
         params = [p_to, p_from]
         if p_only_active_sources:
@@ -287,7 +287,7 @@ class BudgetRepository:
             JOIN {TABLE_SOURCE} bs ON bs.id = bp.budget_source_id
             WHERE bs.is_active = 1
               AND bp.gueltig_ab <= ?
-              AND (bp.gueltig_bis IS NULL OR bp.gueltig_bis >= ?)
+              AND bp.gueltig_bis >= ?
             ORDER BY bp.gueltig_ab ASC, bp.id ASC
             """,
             (p_to, p_from),
@@ -299,7 +299,7 @@ class BudgetRepository:
                     "id": int(row[0]),
                     "budget_source_id": int(row[1]),
                     "gueltig_ab": str(row[2]),
-                    "gueltig_bis": str(row[3]) if row[3] is not None else "",
+                    "gueltig_bis": str(row[3]),
                     "betrag_eur": float(row[4]),
                     "note": str(row[5]) if row[5] is not None else "",
                     "budget_source_name": str(row[6]),
