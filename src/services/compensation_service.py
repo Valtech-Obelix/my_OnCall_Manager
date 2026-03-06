@@ -368,7 +368,7 @@ class CompensationService:
     ) -> list[dict[str, str | Decimal | int]]:
         year = int(p_year)
         month = int(p_month)
-        aggregated: dict[tuple[str, str, str], dict[str, str | Decimal]] = {}
+        aggregated: dict[tuple[str, str, str], dict[str, str | Decimal | int]] = {}
 
         for file_path in booking_csv_files():
             with file_path.open("r", encoding="utf-8-sig", newline="") as csv_file:
@@ -412,26 +412,27 @@ class CompensationService:
                     user = row[index_map["User"]].strip()
                     notes = row[index_map["Notes"]].strip()
                     key = (booking_date.isoformat(), user, task_name.casefold())
-                    entry = aggregated.setdefault(
-                        key,
-                        {
-                            "booking_date": booking_date.isoformat(),
-                            "user": user,
-                            "task_name": task_name,
-                            "hours": Decimal("0"),
-                            "notes": notes,
-                            "source_file": file_path.name,
-                        },
-                    )
+                        entry = aggregated.setdefault(
+                            key,
+                            {
+                                "booking_date": booking_date.isoformat(),
+                                "user": user,
+                                "task_name": task_name,
+                                "hours": Decimal("0"),
+                                "booking_count": 0,
+                                "notes": notes,
+                                "source_file": file_path.name,
+                            },
+                        )
                     entry["hours"] = Decimal(entry["hours"]) + hours
+                    entry["booking_count"] = int(entry["booking_count"]) + 1
 
-        entries: list[dict[str, str | Decimal]] = []
+        entries: list[dict[str, str | Decimal | int]] = []
         for entry in aggregated.values():
             hours = Decimal(entry["hours"])
             if hours == 0:
                 continue
             entry["hours"] = hours
-            entry["booking_count"] = int(entry["booking_count"])
             entries.append(entry)
         return entries
 
