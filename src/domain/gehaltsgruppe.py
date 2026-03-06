@@ -4,14 +4,17 @@ from src.domain.exceptions import DomainException
 
 
 class Gehaltsgruppe:
-    def __init__(self, p_id: int | None, p_bezeichnung: str):
+    def __init__(self, p_id: int | None, p_bezeichnung: str, p_oncall_location_id: str = "GER"):
         self.id = p_id
         self.bezeichnung = p_bezeichnung.strip()
+        self.oncall_location_id = p_oncall_location_id.strip().upper()
         self._validate()
 
     def _validate(self) -> None:
         if not self.bezeichnung:
             raise DomainException("Bezeichnung darf nicht leer sein.")
+        if len(self.oncall_location_id) != 3:
+            raise DomainException("Standortkennung muss 3 Zeichen haben.")
 
 
 class GehaltsgruppenBetrag:

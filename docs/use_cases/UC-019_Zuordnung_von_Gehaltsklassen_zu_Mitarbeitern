@@ -1,0 +1,84 @@
+# UC-019 – Zuordnung von Gehaltsklassen zu Mitarbeitern
+
+## Version
+0.2
+
+---
+
+## Ziel
+
+Als Administrator  
+moechte ich Mitarbeitern Gehaltsklassen mit Gueltigkeitszeitraum zuordnen koennen,  
+um erstmalige Zuordnungen, Wechsel und Korrekturen fachlich sauber abzubilden.
+
+---
+
+## Fachliche Regeln
+
+- Eine Zuordnung besteht aus:
+  - Mitarbeiter
+  - Gehaltsklasse
+  - `gueltig_ab`
+  - optional `gueltig_bis`
+- Ein Wechsel der Gehaltsklasse wird als neue Zuordnung mit neuem Zeitraum gespeichert.
+- Eine Korrektur bei gleichem Zeitraum ersetzt nur die Gehaltsklasse (Zeitraum bleibt gleich).
+- Zeitraeume eines Mitarbeiters duerfen sich nicht ueberschneiden.
+
+---
+
+## Hauptablauf
+
+1. Administrator oeffnet die Mitarbeiterverwaltung.
+2. Administrator waehlt einen Mitarbeiter.
+3. System zeigt im Edit-Bereich drei Bloecke:
+   - Stammdaten (editierbar)
+   - Aktivierungsinformationen (Anzeige + Aktionen)
+   - Gehaltsgruppenzuordnung (Anzeige + Aktionen)
+4. Administrator klickt auf `Gehaltsgruppe zuweisen` oder `Gehaltsgruppe aendern`.
+5. System oeffnet einen Dialog mit Gehaltsgruppe und `gueltig_ab`.
+6. Administrator bestaetigt mit `OK`.
+7. System speichert die Zuordnung.
+
+---
+
+## Alternativablaeufe
+
+- A1: Zeitraum ueberlappt mit bestehender Zuordnung  
+  System zeigt Fehlermeldung und speichert nicht.
+- A2: Korrektur bei gleichem Zeitraum  
+  System aktualisiert nur die Gehaltsklasse der bestehenden Zuordnung.
+
+---
+
+## Akzeptanzkriterien
+
+- Erstzuordnung ist ueber den Button `Gehaltsgruppe zuweisen` moeglich.
+- Wechsel wird als neue Zuordnung gespeichert.
+- Korrektur bei gleichem Zeitraum aktualisiert den Wert ohne Zeitraumaenderung.
+- Ueberlappende Zeitraeume werden verhindert.
+- Stichtagsabfrage liefert die gueltige Zuordnung am Datum.
+- Datumsdarstellung in der UI ist `tt.mm.jj`.
+- Auswahlliste der Gehaltsgruppen im Dialog wird auf den Standort des Mitarbeiters eingeschraenkt.
+
+### UI-Regeln Aktivierungsblock
+
+- `Aktiv` ist gesetzt, wenn im letzten Aktivierungsdatensatz `start_datum` gesetzt und `ende_datum` leer ist.
+- `Seit` und `Bis` sind reine Anzeigen und zeigen den letzten Aktivierungsdatensatz.
+- `Aktivieren` ist nur aktiv, wenn kein offener Aktivierungsdatensatz existiert.
+- `Deaktivieren` ist nur aktiv, wenn ein offener Aktivierungsdatensatz existiert.
+- `Historie anzeigen` ist nur aktiv, wenn mehr als ein Aktivierungsdatensatz vorhanden ist.
+
+### UI-Regeln Gehaltsgruppenblock
+
+- `Gehaltsgruppe`, `Seit`, `Bis` sind reine Anzeigen des aktuell gueltigen Datensatzes.
+- Button 1 lautet `Gehaltsgruppe zuweisen`, wenn kein Datensatz existiert, sonst `Gehaltsgruppe aendern`.
+- `Gehaltsgruppe korrigieren` ist nur aktiv, wenn bereits eine Zuordnung existiert.
+- Bei `Gehaltsgruppe korrigieren` darf nur die Gehaltsgruppe geaendert werden, nicht `gueltig_ab`.
+- `Historie anzeigen` ist nur aktiv, wenn mehr als ein Gehaltsgruppen-Datensatz vorhanden ist.
+- Die Auswahl im Zuordnungsdialog enthält nur Gehaltsgruppen, deren Standort dem Mitarbeiterstandort entspricht.
+
+---
+
+## Zugehoerige Change Requests
+
+- [CR-033 – Gehaltsklassenzuordnung zu Mitarbeitern mit Zeitraum](../change_requests/CR-033_Gehaltsklassenzuordnung_zu_Mitarbeitern_mit_Zeitraum.md)

@@ -19,6 +19,8 @@ from    src.infrastructure.gehaltsgruppe_repository         import  Gehaltsgrupp
 from    src.infrastructure.secret_loader                    import  load_opsgenie_api_key
 from    src.infrastructure.runtime_paths                    import  user_booking_data_dir
 from    src.services.gehaltsgruppe_service                 import  GehaltsgruppeService
+from    src.services.mitarbeiter_gehaltsgruppe_service     import  MitarbeiterGehaltsgruppeService
+from    src.services.mitarbeiter_aktivierung_service       import  MitarbeiterAktivierungService
 
 class Application:
 
@@ -58,6 +60,13 @@ class Application:
         )
         self._gehaltsgruppe_service = GehaltsgruppeService(
             self._gehaltsgruppe_repository
+        )
+        self._mitarbeiter_gehaltsgruppe_service = MitarbeiterGehaltsgruppeService(
+            self._analyst_repository,
+            self._gehaltsgruppe_repository,
+        )
+        self._mitarbeiter_aktivierung_service = MitarbeiterAktivierungService(
+            self._analyst_repository
         )
 
         # Ref: UC-004 – vollständige Verdrahtung
@@ -269,11 +278,13 @@ class Application:
         p_bezeichnung: str,
         p_betrag: float,
         p_gueltig_ab: date,
+        p_oncall_location_id: str = "GER",
     ):
         return self._gehaltsgruppe_service.create(
             p_bezeichnung=p_bezeichnung,
             p_betrag=p_betrag,
             p_gueltig_ab=p_gueltig_ab,
+            p_oncall_location_id=p_oncall_location_id,
         )
 
     # Ref: UC-017 – Betragshistorie pflegen
@@ -287,6 +298,17 @@ class Application:
             p_group_id=p_group_id,
             p_betrag=p_betrag,
             p_gueltig_ab=p_gueltig_ab,
+        )
+
+    # Ref: UC-017 – Gehaltsgruppe aktualisieren
+    def update_gehaltsgruppe_oncall_location(
+        self,
+        p_group_id: int,
+        p_oncall_location_id: str,
+    ) -> None:
+        self._gehaltsgruppe_service.update_oncall_location(
+            p_group_id=p_group_id,
+            p_oncall_location_id=p_oncall_location_id,
         )
 
     # Ref: UC-017 – Stichtagsabfrage
@@ -307,3 +329,72 @@ class Application:
     # Ref: UC-017 – Betragshistorie anzeigen
     def get_gehaltsgruppe_betraege(self, p_group_id: int):
         return self._gehaltsgruppe_service.get_betraege(p_group_id)
+
+    # Ref: UC-019 – Gehaltsklassenzuordnung zu Mitarbeiter pflegen
+    def assign_gehaltsgruppe_to_mitarbeiter(
+        self,
+        p_mitarbeiter_id: int,
+        p_gehaltsgruppe_id: int,
+        p_gueltig_ab: date,
+        p_gueltig_bis: date | None = None,
+    ) -> None:
+        self._mitarbeiter_gehaltsgruppe_service.assign(
+            p_mitarbeiter_id=p_mitarbeiter_id,
+            p_gehaltsgruppe_id=p_gehaltsgruppe_id,
+            p_gueltig_ab=p_gueltig_ab,
+            p_gueltig_bis=p_gueltig_bis,
+        )
+
+    # Ref: UC-019 – Gehaltsklassenzuordnungen anzeigen
+    def get_gehaltsgruppen_assignments_for_mitarbeiter(
+        self,
+        p_mitarbeiter_id: int
+    ) -> list[dict[str, str | int]]:
+        return self._mitarbeiter_gehaltsgruppe_service.get_assignments(p_mitarbeiter_id)
+
+    # Ref: UC-019 – Gehaltsklasse am Stichtag
+    def get_gehaltsgruppe_assignment_for_mitarbeiter_at(
+        self,
+        p_mitarbeiter_id: int,
+        p_stichtag: date,
+    ) -> dict[str, str | int] | None:
+        return self._mitarbeiter_gehaltsgruppe_service.get_assignment_at(
+            p_mitarbeiter_id=p_mitarbeiter_id,
+            p_stichtag=p_stichtag,
+        )
+
+    # Ref: UC-019 v0.2 – Aktivierungsverlauf anzeigen
+    def get_activation_periods_for_mitarbeiter(
+        self,
+        p_mitarbeiter_id: int,
+    ) -> list[dict[str, str | int]]:
+        return self._mitarbeiter_aktivierung_service.get_periods(p_mitarbeiter_id)
+
+    # Ref: UC-019 v0.2 – Letzten Aktivierungsstatus anzeigen
+    def get_current_activation_period_for_mitarbeiter(
+        self,
+        p_mitarbeiter_id: int,
+    ) -> dict[str, str | int] | None:
+        return self._mitarbeiter_aktivierung_service.get_current_period(p_mitarbeiter_id)
+
+    # Ref: UC-019 v0.2 – Mitarbeiter aktivieren
+    def activate_mitarbeiter(
+        self,
+        p_mitarbeiter_id: int,
+        p_start_datum: date,
+    ) -> None:
+        self._mitarbeiter_aktivierung_service.activate(
+            p_mitarbeiter_id=p_mitarbeiter_id,
+            p_start_datum=p_start_datum,
+        )
+
+    # Ref: UC-019 v0.2 – Mitarbeiter deaktivieren
+    def deactivate_mitarbeiter(
+        self,
+        p_mitarbeiter_id: int,
+        p_ende_datum: date,
+    ) -> None:
+        self._mitarbeiter_aktivierung_service.deactivate(
+            p_mitarbeiter_id=p_mitarbeiter_id,
+            p_ende_datum=p_ende_datum,
+        )

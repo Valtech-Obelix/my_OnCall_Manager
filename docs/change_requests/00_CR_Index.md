@@ -34,6 +34,8 @@
 | CR-030 | Buchungsname als Nachname, Vorname | umgesetzt    | UC-001/018 | hoch      | 2026-03-05  | 2026-03-05   | [CR-030](./CR-030_Buchungsname_als_Nachname_Vorname.md) |
 | CR-031 | Bestaetigungsdialog Loeschen mit deutschen Buttontexten | umgesetzt    | UC-018   | mittel    | 2026-03-05  | 2026-03-05   | [CR-031](./CR-031_Bestaetigungsdialog_Loeschen_mit_deutschen_Buttontexten.md) |
 | CR-032 | Neu-Aktion leert Form nach abgebrochenem Loeschen | umgesetzt    | UC-018   | mittel    | 2026-03-05  | 2026-03-05   | [CR-032](./CR-032_Neu_Aktion_leert_Form_nach_abgebrochenem_Loeschen.md) |
+| CR-033 | Gehaltsklassenzuordnung zu Mitarbeitern mit Zeitraum | umgesetzt    | UC-019   | hoch      | 2026-03-05  | 2026-03-05   | [CR-033](./CR-033_Gehaltsklassenzuordnung_zu_Mitarbeitern_mit_Zeitraum.md) |
+| CR-034 | Legacy-Tabellen bereinigen | umgesetzt    | UC-019   | mittel    | 2026-03-05  | 2026-03-05   | [CR-034](./CR-034_Legacy_Tabellen_bereinigen.md) |
 
 ## Statusdefinition
 

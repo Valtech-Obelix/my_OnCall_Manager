@@ -12,13 +12,17 @@ class GehaltsgruppeRepository:
         cursor = self._connection.cursor()
         cursor.execute(
             """
-            INSERT INTO gehaltsgruppe (bezeichnung)
-            VALUES (?)
+            INSERT INTO gehaltsgruppe (bezeichnung, oncall_location_id)
+            VALUES (?, ?)
             """,
-            (p_gehaltsgruppe.bezeichnung,),
+            (p_gehaltsgruppe.bezeichnung, p_gehaltsgruppe.oncall_location_id),
         )
         self._connection.commit()
-        return Gehaltsgruppe(p_id=cursor.lastrowid, p_bezeichnung=p_gehaltsgruppe.bezeichnung)
+        return Gehaltsgruppe(
+            p_id=cursor.lastrowid,
+            p_bezeichnung=p_gehaltsgruppe.bezeichnung,
+            p_oncall_location_id=p_gehaltsgruppe.oncall_location_id,
+        )
 
     def add_with_initial_betrag(
         self,
@@ -30,10 +34,10 @@ class GehaltsgruppeRepository:
             cursor.execute("BEGIN")
             cursor.execute(
                 """
-                INSERT INTO gehaltsgruppe (bezeichnung)
-                VALUES (?)
+                INSERT INTO gehaltsgruppe (bezeichnung, oncall_location_id)
+                VALUES (?, ?)
                 """,
-                (p_gehaltsgruppe.bezeichnung,),
+                (p_gehaltsgruppe.bezeichnung, p_gehaltsgruppe.oncall_location_id),
             )
             new_id = int(cursor.lastrowid)
             cursor.execute(
@@ -47,7 +51,11 @@ class GehaltsgruppeRepository:
         except Exception:
             self._connection.rollback()
             raise
-        return Gehaltsgruppe(p_id=new_id, p_bezeichnung=p_gehaltsgruppe.bezeichnung)
+        return Gehaltsgruppe(
+            p_id=new_id,
+            p_bezeichnung=p_gehaltsgruppe.bezeichnung,
+            p_oncall_location_id=p_gehaltsgruppe.oncall_location_id,
+        )
 
     def exists(self, p_id: int) -> bool:
         cursor = self._connection.cursor()
@@ -73,13 +81,20 @@ class GehaltsgruppeRepository:
         cursor = self._connection.cursor()
         cursor.execute(
             """
-            SELECT id, bezeichnung
+            SELECT id, bezeichnung, oncall_location_id
             FROM gehaltsgruppe
             ORDER BY bezeichnung
             """
         )
         rows = cursor.fetchall()
-        return [Gehaltsgruppe(p_id=row[0], p_bezeichnung=row[1]) for row in rows]
+        return [
+            Gehaltsgruppe(
+                p_id=row[0],
+                p_bezeichnung=row[1],
+                p_oncall_location_id=str(row[2]),
+            )
+            for row in rows
+        ]
 
     def get_betrag_am_stichtag(self, p_group_id: int, p_stichtag: date) -> float | None:
         cursor = self._connection.cursor()
@@ -118,3 +133,15 @@ class GehaltsgruppeRepository:
             }
             for row in rows
         ]
+
+    def update_oncall_location(self, p_group_id: int, p_oncall_location_id: str) -> None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            """
+            UPDATE gehaltsgruppe
+            SET oncall_location_id = ?
+            WHERE id = ?
+            """,
+            (p_oncall_location_id.strip().upper(), int(p_group_id)),
+        )
+        self._connection.commit()

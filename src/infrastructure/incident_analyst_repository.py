@@ -300,3 +300,238 @@ class IncidentAnalystRepository:
             (p_opsgenie_id, p_id)
         )
         self._connection.commit()
+
+    def get_gehaltsgruppen_zuordnungen(
+        self,
+        p_mitarbeiter_id: int
+    ) -> list[dict[str, str | int]]:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT
+                mg.id,
+                mg.gehaltsgruppe_id,
+                g.bezeichnung,
+                mg.gueltig_ab,
+                mg.gueltig_bis
+            FROM mitarbeiter_gehaltsgruppe mg
+            JOIN gehaltsgruppe g ON g.id = mg.gehaltsgruppe_id
+            WHERE mg.mitarbeiter_id = ?
+            ORDER BY mg.gueltig_ab ASC
+            ''',
+            (int(p_mitarbeiter_id),)
+        )
+        rows = cursor.fetchall()
+        return [
+            {
+                "id": int(row[0]),
+                "gehaltsgruppe_id": int(row[1]),
+                "gehaltsgruppe_bezeichnung": str(row[2]),
+                "gueltig_ab": str(row[3]),
+                "gueltig_bis": str(row[4]) if row[4] else "",
+            }
+            for row in rows
+        ]
+
+    def upsert_gehaltsgruppen_zuordnung(
+        self,
+        p_mitarbeiter_id: int,
+        p_gehaltsgruppe_id: int,
+        p_gueltig_ab: date,
+        p_gueltig_bis: date | None,
+    ) -> None:
+        cursor = self._connection.cursor()
+        gueltig_ab_text = p_gueltig_ab.isoformat()
+        gueltig_bis_text = p_gueltig_bis.isoformat() if p_gueltig_bis else None
+
+        cursor.execute(
+            '''
+            SELECT id
+            FROM mitarbeiter_gehaltsgruppe
+            WHERE mitarbeiter_id = ?
+              AND gueltig_ab = ?
+              AND (
+                    (gueltig_bis IS NULL AND ? IS NULL)
+                    OR gueltig_bis = ?
+              )
+            ''',
+            (
+                int(p_mitarbeiter_id),
+                gueltig_ab_text,
+                gueltig_bis_text,
+                gueltig_bis_text,
+            )
+        )
+        existing = cursor.fetchone()
+
+        if existing is not None:
+            cursor.execute(
+                '''
+                UPDATE mitarbeiter_gehaltsgruppe
+                SET gehaltsgruppe_id = ?
+                WHERE id = ?
+                ''',
+                (int(p_gehaltsgruppe_id), int(existing[0]))
+            )
+        else:
+            cursor.execute(
+                '''
+                INSERT INTO mitarbeiter_gehaltsgruppe
+                (mitarbeiter_id, gehaltsgruppe_id, gueltig_ab, gueltig_bis)
+                VALUES (?, ?, ?, ?)
+                ''',
+                (
+                    int(p_mitarbeiter_id),
+                    int(p_gehaltsgruppe_id),
+                    gueltig_ab_text,
+                    gueltig_bis_text,
+                )
+            )
+        self._connection.commit()
+
+    def get_gehaltsgruppe_zuordnung_am_stichtag(
+        self,
+        p_mitarbeiter_id: int,
+        p_stichtag: date
+    ) -> dict[str, str | int] | None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT
+                mg.id,
+                mg.gehaltsgruppe_id,
+                g.bezeichnung,
+                mg.gueltig_ab,
+                mg.gueltig_bis
+            FROM mitarbeiter_gehaltsgruppe mg
+            JOIN gehaltsgruppe g ON g.id = mg.gehaltsgruppe_id
+            WHERE mg.mitarbeiter_id = ?
+              AND mg.gueltig_ab <= ?
+              AND (mg.gueltig_bis IS NULL OR mg.gueltig_bis >= ?)
+            ORDER BY mg.gueltig_ab DESC, mg.id DESC
+            LIMIT 1
+            ''',
+            (int(p_mitarbeiter_id), p_stichtag.isoformat(), p_stichtag.isoformat())
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return {
+            "id": int(row[0]),
+            "gehaltsgruppe_id": int(row[1]),
+            "gehaltsgruppe_bezeichnung": str(row[2]),
+            "gueltig_ab": str(row[3]),
+            "gueltig_bis": str(row[4]) if row[4] else "",
+        }
+
+    def update_gehaltsgruppen_zuordnung_end_date(
+        self,
+        p_assignment_id: int,
+        p_gueltig_bis: date,
+    ) -> None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            UPDATE mitarbeiter_gehaltsgruppe
+            SET gueltig_bis = ?
+            WHERE id = ?
+            ''',
+            (p_gueltig_bis.isoformat(), int(p_assignment_id))
+        )
+        self._connection.commit()
+
+    def get_activation_periods(self, p_mitarbeiter_id: int) -> list[dict[str, str | int]]:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT id, start_datum, ende_datum
+            FROM mitarbeiter_aktivierung
+            WHERE mitarbeiter_id = ?
+            ORDER BY start_datum ASC, id ASC
+            ''',
+            (int(p_mitarbeiter_id),)
+        )
+        rows = cursor.fetchall()
+        return [
+            {
+                "id": int(row[0]),
+                "start_datum": str(row[1]),
+                "ende_datum": str(row[2]) if row[2] else "",
+            }
+            for row in rows
+        ]
+
+    def get_open_activation_period(self, p_mitarbeiter_id: int) -> dict[str, str | int] | None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            SELECT id, start_datum, ende_datum
+            FROM mitarbeiter_aktivierung
+            WHERE mitarbeiter_id = ?
+              AND ende_datum IS NULL
+            ORDER BY start_datum DESC, id DESC
+            LIMIT 1
+            ''',
+            (int(p_mitarbeiter_id),)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return {
+            "id": int(row[0]),
+            "start_datum": str(row[1]),
+            "ende_datum": str(row[2]) if row[2] else "",
+        }
+
+    def add_activation_period(
+        self,
+        p_mitarbeiter_id: int,
+        p_start_datum: date,
+        p_ende_datum: date | None = None,
+    ) -> None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            INSERT INTO mitarbeiter_aktivierung (mitarbeiter_id, start_datum, ende_datum)
+            VALUES (?, ?, ?)
+            ''',
+            (
+                int(p_mitarbeiter_id),
+                p_start_datum.isoformat(),
+                p_ende_datum.isoformat() if p_ende_datum else None,
+            )
+        )
+        self._connection.commit()
+
+    def close_activation_period(self, p_period_id: int, p_ende_datum: date) -> None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            UPDATE mitarbeiter_aktivierung
+            SET ende_datum = ?
+            WHERE id = ?
+            ''',
+            (p_ende_datum.isoformat(), int(p_period_id))
+        )
+        self._connection.commit()
+
+    def set_current_activation_window(
+        self,
+        p_mitarbeiter_id: int,
+        p_start_datum: date,
+        p_ende_datum: date | None = None,
+    ) -> None:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            '''
+            UPDATE incident_analyst
+            SET start_datum = ?, ende_datum = ?
+            WHERE id = ?
+            ''',
+            (
+                p_start_datum.isoformat(),
+                p_ende_datum.isoformat() if p_ende_datum else None,
+                int(p_mitarbeiter_id),
+            )
+        )
+        self._connection.commit()
