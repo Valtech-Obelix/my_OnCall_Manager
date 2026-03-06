@@ -120,6 +120,16 @@ class BudgetService:
         return self._repository.get_periods_for_source(source_id)
 
     # ---------------------------
+    # Gesamte Budgetquellen
+    # ---------------------------
+    def get_active_periods(self) -> list[dict[str, str | int | float]]:
+        return self._repository.get_active_periods()
+
+    def get_active_budget_total(self) -> float:
+        periods = self.get_active_periods()
+        return sum(float(period["betrag_eur"]) for period in periods)
+
+    # ---------------------------
     # Berechnungen
     # ---------------------------
     def get_budget_for_date(self, p_day: date) -> float:

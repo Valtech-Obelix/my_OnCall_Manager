@@ -22,6 +22,7 @@ from    src.ui.client_utilized_cost_dialog                 import  ClientUtilize
 from    src.ui.overtime_cost_dialog                        import  OvertimeCostDialog
 from    src.ui.on_call_cost_dialog                         import  OnCallCostDialog
 from    src.ui.budget_management_dialog                    import  BudgetManagementDialog
+from    src.ui.budget_burndown_dialog                     import  BudgetBurndownDialog
 
 
 APP_TITLE                               =   'my_OnCall_Manager'
@@ -38,6 +39,7 @@ ACTION_MONTHLY_COMPENSATION             =   'Monatsabrechnung IA-Auszahlung'
 ACTION_TEST_CLIENT_UTILIZED_COSTS       =   'Client Utilized Kosten testen'
 ACTION_TEST_OVERTIME_COSTS             =   'Overtime Kosten testen'
 ACTION_TEST_ON_CALL_COSTS              =   'On Call Kosten testen'
+ACTION_BUDGET_BURNDOWN                 =   'Budget Burndown'
 ACTION_OPEN_BOOKING_FOLDER              =   'CSV-Ordner öffnen'
 ACTION_CLOSE                            =   'Schließen'
 
@@ -178,6 +180,10 @@ class MainWindow(QMainWindow):
         action_on_call_costs.triggered.connect(self._open_on_call_cost_dialog)
         analysis_menu.addAction(action_on_call_costs)
 
+        action_budget_burndown = QAction(ACTION_BUDGET_BURNDOWN, self)
+        action_budget_burndown.triggered.connect(self._open_budget_burndown_dialog)
+        analysis_menu.addAction(action_budget_burndown)
+
 
     def _open_incident_analyst_dialog(self):
 
@@ -234,6 +240,10 @@ class MainWindow(QMainWindow):
 
     def _open_on_call_cost_dialog(self):
         dialog = OnCallCostDialog(self._application, self)
+        dialog.exec()
+
+    def _open_budget_burndown_dialog(self):
+        dialog = BudgetBurndownDialog(self._application, self)
         dialog.exec()
 
     def _open_booking_csv_folder(self):

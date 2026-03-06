@@ -2,7 +2,7 @@ import  sys
 import  logging
 from    pathlib                                             import Path
 from    PySide6.QtWidgets                                   import  QApplication
-from    datetime                                            import  date
+from    datetime                                            import  date, datetime, timedelta
 from    decimal                                             import  Decimal
 
 from    src.ui.main_window                                  import  MainWindow
@@ -757,6 +757,274 @@ class Application:
             p_from=p_from,
             p_to=p_to,
         )
+
+    # Ref: UC-021 – Budgetdaten für Burndown
+    def get_budget_active_periods(self) -> list[dict[str, str | int | float]]:
+        return self._budget_service.get_active_periods()
+
+    # Ref: UC-021 – Budgetgesamtwert
+    def get_total_active_budget(self) -> float:
+        return self._budget_service.get_active_budget_total()
+
+    # Ref: UC-022 – Burndown-Konfiguration
+    def get_burndown_forecast_weeks(self) -> int:
+        value = self._shift_repository.get_setting("budget_burndown_forecast_weeks")
+        if value is None:
+            return 4
+        try:
+            parsed = int(value)
+            return parsed if parsed > 0 else 4
+        except ValueError:
+            return 4
+
+    # Ref: UC-022 – Burndown-Konfiguration
+    def set_burndown_forecast_weeks(self, p_weeks: int) -> None:
+        self._shift_repository.set_setting("budget_burndown_forecast_weeks", str(int(p_weeks)))
+
+    # Ref: UC-022 – Burndown-Daten
+    def get_budget_burndown_data(self, p_forecast_weeks: int) -> dict[str, object]:
+        periods = self.get_budget_active_periods()
+        if len(periods) == 0:
+            raise DomainException("Es ist kein aktives Budget vorhanden.")
+
+        week_count_total = sum(float(period.get("betrag_eur", 0.0)) for period in periods)
+        if week_count_total <= 0:
+            raise DomainException("Das Gesamtbudget ist 0. Bitte Budgets korrigieren.")
+
+        start_date = min(date.fromisoformat(str(period["gueltig_ab"])) for period in periods)
+        end_date = max(date.fromisoformat(str(period["gueltig_bis"])) for period in periods)
+        week_buckets = self._build_week_buckets(start_date=start_date, p_end=end_date)
+        week_index_by_start = {
+            bucket_start: idx for idx, (bucket_start, _bucket_end) in enumerate(week_buckets)
+        }
+
+        plan_values = self._build_plan_series(
+            p_week_buckets=week_buckets,
+            p_periods=periods,
+        )
+
+        today = date.today()
+        current_monday = today - timedelta(days=today.weekday())
+        actual_end = current_monday - timedelta(days=1)
+        if actual_end > end_date:
+            actual_end = end_date
+
+        actual_week_values = self._build_actual_weekly_costs(
+            p_week_index_by_start=week_index_by_start,
+            p_from=start_date,
+            p_to=min(end_date, actual_end),
+        )
+
+        actual_cumulative: list[float] = []
+        total_actual = Decimal("0")
+        actual_last_index = -1
+        for idx in range(len(week_buckets)):
+            if self._week_is_within_actual_window(week_buckets[idx][1], actual_end):
+                total_actual += Decimal(str(actual_week_values[idx]))
+                actual_last_index = idx
+            actual_cumulative.append(float(total_actual))
+
+        if actual_last_index < 0:
+            forecast_values: list[tuple[int, float]] = []
+        else:
+            forecast_values = self._build_forecast_series(
+                p_actual_week_values=actual_week_values,
+                p_actual_cumulative=actual_cumulative,
+                p_last_actual_index=actual_last_index,
+                p_weeks_back=max(1, int(p_forecast_weeks)),
+            )
+
+        labels = [(start + timedelta(days=6)).isoformat() for start, _end in week_buckets]
+        payload: dict[str, object] = {
+            "labels": labels,
+            "plan": plan_values,
+            "total_budget": float(week_count_total),
+            "actual": [
+                {"week_index": int(index), "value": float(value)}
+                for index, value in enumerate(actual_cumulative[: actual_last_index + 1])
+            ] if actual_last_index >= 0 else [],
+            "forecast": [
+                {"week_index": int(index), "value": float(value)}
+                for index, value in forecast_values
+            ],
+        }
+        return payload
+
+    def _build_week_buckets(self, start_date: date, p_end: date) -> list[tuple[date, date]]:
+        buckets = []
+        if p_end < start_date:
+            return buckets
+
+        current_start = start_date - timedelta(days=start_date.weekday())
+        while current_start <= p_end:
+            bucket_end = current_start + timedelta(days=6)
+            if bucket_end > p_end:
+                bucket_end = p_end
+            buckets.append((current_start, bucket_end))
+            current_start += timedelta(weeks=1)
+        return buckets
+
+    def _build_plan_series(
+        self,
+        p_week_buckets: list[tuple[date, date]],
+        p_periods: list[dict[str, str | int | float]],
+    ) -> list[float]:
+        cumulative = Decimal("0")
+        plan_values: list[float] = []
+        parsed_periods = []
+        for period in p_periods:
+            period_start = date.fromisoformat(str(period["gueltig_ab"]))
+            period_end = date.fromisoformat(str(period["gueltig_bis"]))
+            period_months = self._months_between_inclusive(period_start, period_end)
+            if period_months <= 0:
+                continue
+            parsed_periods.append(
+                (
+                    period_start,
+                    period_end,
+                    Decimal(str(period["betrag_eur"])),
+                    period_months,
+                )
+            )
+
+        for bucket_start, bucket_end in p_week_buckets:
+            weekly_amount = Decimal("0")
+            for period_start, period_end, amount, period_months in parsed_periods:
+                if period_end < bucket_start or period_start > bucket_end:
+                    continue
+
+                monthly_amount = amount / Decimal(period_months)
+                for year, month in self._iterate_months(period_start, period_end):
+                    month_start = date(year, month, 1)
+                    month_end = self._month_end(month_start)
+                    overlap_start = max(bucket_start, month_start, period_start)
+                    overlap_end = min(bucket_end, month_end, period_end)
+                    if overlap_start > overlap_end:
+                        continue
+                    overlap_days = Decimal((overlap_end - overlap_start).days + 1)
+                    month_days = Decimal((month_end - month_start).days + 1)
+                    if month_days <= 0:
+                        continue
+                    weekly_amount += monthly_amount * overlap_days / month_days
+
+                continue
+            cumulative += weekly_amount
+            plan_values.append(float(cumulative))
+
+        return plan_values
+
+    def _build_actual_weekly_costs(
+        self,
+        p_week_index_by_start: dict[date, int],
+        p_from: date,
+        p_to: date,
+    ) -> list[float]:
+        values = [0.0] * len(p_week_index_by_start)
+        if p_to < p_from:
+            return values
+
+        def _to_decimal(p_raw: object) -> Decimal:
+            if p_raw is None:
+                return Decimal("0")
+            try:
+                return Decimal(str(p_raw).replace(",", "."))
+            except Exception:
+                return Decimal("0")
+
+        def _add_month_costs(p_rows: list[dict[str, str]]) -> None:
+            for row in p_rows:
+                booking_date = row.get("booking_date")
+                if booking_date is None:
+                    continue
+                try:
+                    parsed_date = date.fromisoformat(str(booking_date))
+                except ValueError:
+                    try:
+                        parsed_date = datetime.strptime(str(booking_date), "%d.%m.%Y").date()
+                    except Exception:
+                        continue
+                if parsed_date < p_from or parsed_date > p_to:
+                    continue
+                week_start = parsed_date - timedelta(days=parsed_date.weekday())
+                week_index = p_week_index_by_start.get(week_start)
+                if week_index is None:
+                    continue
+                amount = _to_decimal(row.get("cost_eur"))
+                values[week_index] += float(amount)
+
+        for year, month in self._iterate_months(p_from, p_to):
+            client_entries = self.get_client_utilized_costs_for_month(
+                p_year=year,
+                p_month=month,
+            )
+            overtime_entries = self.get_overtime_costs_for_month(
+                p_year=year,
+                p_month=month,
+            )
+            oncall_entries = self.get_on_call_costs_for_month(
+                p_year=year,
+                p_month=month,
+            )
+            _add_month_costs(client_entries)
+            _add_month_costs(overtime_entries)
+            _add_month_costs(oncall_entries)
+        return values
+
+    def _build_forecast_series(
+        self,
+        p_actual_week_values: list[float],
+        p_actual_cumulative: list[float],
+        p_last_actual_index: int,
+        p_weeks_back: int,
+    ) -> list[tuple[int, float]]:
+        if p_last_actual_index < 0:
+            return []
+
+        start = max(0, p_last_actual_index - p_weeks_back + 1)
+        window = p_actual_week_values[start : p_last_actual_index + 1]
+        if len(window) == 0:
+            return []
+
+        total = Decimal("0")
+        for value in window:
+            total += Decimal(str(value))
+        average = total / Decimal(len(window))
+
+        forecast: list[tuple[int, float]] = []
+        running = Decimal(str(p_actual_cumulative[p_last_actual_index]))
+        last_idx = len(p_actual_week_values) - 1
+        forecast.append((p_last_actual_index, float(running)))
+        for idx in range(p_last_actual_index + 1, last_idx + 1):
+            running += average
+            forecast.append((idx, float(running)))
+        return forecast
+
+    @staticmethod
+    def _month_end(p_month_start: date) -> date:
+        return (p_month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+
+    @staticmethod
+    def _months_between_inclusive(p_start: date, p_end: date) -> int:
+        return (p_end.year - p_start.year) * 12 + (p_end.month - p_start.month) + 1
+
+    def _iterate_months(self, p_from: date, p_to: date) -> list[tuple[int, int]]:
+        if p_to < p_from:
+            return []
+        months = []
+        current_year = p_from.year
+        current_month = p_from.month
+        while (current_year, current_month) <= (p_to.year, p_to.month):
+            months.append((current_year, current_month))
+            if current_month == 12:
+                current_year += 1
+                current_month = 1
+            else:
+                current_month += 1
+        return months
+
+    @staticmethod
+    def _week_is_within_actual_window(p_bucket_end: date, p_reference: date) -> bool:
+        return p_bucket_end <= p_reference
 
     # Ref: UC-017 – Gehaltsgruppen verwalten
     def create_gehaltsgruppe(

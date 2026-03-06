@@ -191,6 +191,39 @@ class BudgetRepository:
             )
         return rows
 
+    def get_active_periods(self) -> list[dict[str, str | int | float]]:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            f"""
+            SELECT
+                bp.id,
+                bp.budget_source_id,
+                bp.gueltig_ab,
+                bp.gueltig_bis,
+                bp.betrag_eur,
+                bp.note,
+                bs.name AS budget_source_name
+            FROM {TABLE_PERIOD} bp
+            JOIN {TABLE_SOURCE} bs ON bs.id = bp.budget_source_id
+            WHERE bs.is_active = 1
+            ORDER BY bp.gueltig_ab ASC, bp.id ASC
+            """
+        )
+        rows = []
+        for row in cursor.fetchall():
+            rows.append(
+                {
+                    "id": int(row[0]),
+                    "budget_source_id": int(row[1]),
+                    "gueltig_ab": str(row[2]),
+                    "gueltig_bis": str(row[3]),
+                    "betrag_eur": float(row[4]),
+                    "note": str(row[5]) if row[5] is not None else "",
+                    "budget_source_name": str(row[6]),
+                }
+            )
+        return rows
+
     def update_period(
         self,
         p_period_id: int,
