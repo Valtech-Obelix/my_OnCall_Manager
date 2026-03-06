@@ -218,6 +218,55 @@ def test_initialize_schema_creates_mitarbeiter_gehaltsgruppe_table(tmp_path) -> 
     database.close()
 
 
+def test_initialize_schema_creates_budget_source_table(tmp_path) -> None:
+    db_path = tmp_path / "budget_source_schema.db"
+    database = Database(p_db_path=db_path)
+    database.initialize_schema()
+    connection = database.get_connection()
+
+    table_info = connection.execute(
+        "PRAGMA table_info(budget_source)"
+    ).fetchall()
+    column_names = [row[1] for row in table_info]
+
+    assert column_names == ["id", "name", "is_active"]
+
+    database.close()
+
+
+def test_initialize_schema_creates_budget_period_table(tmp_path) -> None:
+    db_path = tmp_path / "budget_period_schema.db"
+    database = Database(p_db_path=db_path)
+    database.initialize_schema()
+    connection = database.get_connection()
+
+    table_info = connection.execute(
+        "PRAGMA table_info(budget_period)"
+    ).fetchall()
+    column_names = [row[1] for row in table_info]
+    assert column_names == [
+        "id",
+        "budget_source_id",
+        "gueltig_ab",
+        "gueltig_bis",
+        "betrag_eur",
+        "note",
+    ]
+
+    fk_info = connection.execute("PRAGMA foreign_key_list(budget_period)").fetchall()
+    assert any(
+        row[2] == "budget_source" and row[3] == "budget_source_id"
+        for row in fk_info
+    )
+
+    indexes = {
+        row[1]: row[2] for row in connection.execute("PRAGMA index_list(budget_period)").fetchall()
+    }
+    assert any("idx_budget_period_source_from" in name for name in indexes)
+
+    database.close()
+
+
 def test_initialize_schema_repairs_legacy_foreign_keys_to_incident_analyst(tmp_path) -> None:
     db_path = tmp_path / "legacy_fk_repair.db"
     connection = sqlite3.connect(db_path)

@@ -179,6 +179,41 @@ class Database:
             '''
         )
 
+        # Ref: UC-021 – Budgetquellen (z. B. Kunde/Partner/Projekt)
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS budget_source (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE CHECK (length(trim(name)) > 0),
+                is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))
+            )
+            '''
+        )
+
+        # Ref: UC-021 – Budgetzeiträume je Quelle
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS budget_period (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                budget_source_id INTEGER NOT NULL,
+                gueltig_ab TEXT NOT NULL,
+                gueltig_bis TEXT,
+                betrag_eur REAL NOT NULL CHECK (betrag_eur >= 0),
+                note TEXT,
+                FOREIGN KEY (budget_source_id)
+                    REFERENCES budget_source (id)
+                    ON DELETE CASCADE,
+                CHECK (gueltig_bis IS NULL OR gueltig_bis >= gueltig_ab)
+            )
+            '''
+        )
+        cursor.execute(
+            '''
+            CREATE INDEX IF NOT EXISTS idx_budget_period_source_from
+            ON budget_period (budget_source_id, gueltig_ab)
+            '''
+        )
+
         # Ref: UC-011 v0.1 – Rufbereitschaftsstandorte
         cursor.execute(
             '''
@@ -199,7 +234,6 @@ class Database:
         cursor.execute("DROP TABLE IF EXISTS employee_salary_group_assignment")
         cursor.execute("DROP TABLE IF EXISTS salary_group")
         cursor.execute("DROP TABLE IF EXISTS budget_cost_rate")
-        cursor.execute("DROP TABLE IF EXISTS budget_source")
 
         self._connection.commit()
 
