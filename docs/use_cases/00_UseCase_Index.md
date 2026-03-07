@@ -24,6 +24,7 @@
 | UC-020 | Buchungen Kosten zuordnen             | abgeschlossen | 0.2     |
 | UC-021 | Verwaltung des Budgets                  | in Arbeit     | 0.1     |
 | UC-022 | Burndown Budget erstellen             | abgeschlossen | 1.0     |
+| UC-023 | OpsGenie Key über Config aus 1Password lesen | abgeschlossen | 0.1     |
 
 ## Verknüpfte Änderungshistorie
 

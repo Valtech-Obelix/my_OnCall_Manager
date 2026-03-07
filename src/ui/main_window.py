@@ -8,6 +8,7 @@ from    PySide6.QtWidgets                                   import  (
                                                                         QVBoxLayout,
                                                                     )
 from    pathlib                                             import Path
+from    src.infrastructure.app_version                        import  get_app_version, get_app_build_info
 from    src.infrastructure.runtime_paths                    import resource_path
 from    src.ui.incident_analyst_dialog                      import  IncidentAnalystDialog
 from    src.ui.opsgenie_import_dialog                       import  OpsGenieImportDialog
@@ -42,6 +43,7 @@ ACTION_TEST_ON_CALL_COSTS              =   'On Call Kosten testen'
 ACTION_BUDGET_BURNDOWN                 =   'Budget Burndown'
 ACTION_OPEN_BOOKING_FOLDER              =   'CSV-Ordner öffnen'
 ACTION_CLOSE                            =   'Schließen'
+ACTION_ABOUT                           =   'Über my_OnCall_Manager'
 
 
 class MainWindow(QMainWindow):
@@ -52,8 +54,10 @@ class MainWindow(QMainWindow):
         self._setup_ui()
 
     def _setup_ui(self):
+        app_version = get_app_version()
+        title_with_version = f"{APP_TITLE} v{app_version}"
 
-        self.setWindowTitle(APP_TITLE)
+        self.setWindowTitle(title_with_version)
         self.resize(820, 520)
 
         central_widget = QWidget()
@@ -70,7 +74,7 @@ class MainWindow(QMainWindow):
 
         title_label = QLabel("my_OnCall_Manager")
         title_label.setObjectName("mainTitle")
-        subtitle_label = QLabel("Navigation über die Menüleiste")
+        subtitle_label = QLabel(f"Navigation über die Menüleiste · Version: {app_version}")
         subtitle_label.setObjectName("mainSubtitle")
 
         title_card_layout.addWidget(title_label)
@@ -117,6 +121,9 @@ class MainWindow(QMainWindow):
         action_close = QAction(ACTION_CLOSE, self)
         action_close.triggered.connect(self.close)
         file_menu.addAction(action_close)
+        action_about = QAction(ACTION_ABOUT, self)
+        action_about.triggered.connect(self._show_about_dialog)
+        file_menu.addAction(action_about)
 
         management_menu = menu_bar.addMenu("Verwaltung")
         action_oncall_locations = QAction(ACTION_VIEW_ONCALL_LOCATIONS, self)
@@ -255,3 +262,19 @@ class MainWindow(QMainWindow):
                 APP_TITLE,
                 f"CSV-Ordner konnte nicht geoeffnet werden:\n{booking_folder}",
             )
+
+    def _show_about_dialog(self):
+        info = get_app_build_info()
+        version = info.get("version", get_app_version())
+        commit = info.get("commit")
+        build_time = info.get("build_time")
+        lines = [f"my_OnCall_Manager\nVersion: {version}"]
+        if commit:
+            lines.append(f"Commit: {commit}")
+        if build_time:
+            lines.append(f"Build-Datum: {build_time}")
+        QMessageBox.information(
+            self,
+            ACTION_ABOUT,
+            "\n".join(lines),
+        )

@@ -44,7 +44,7 @@ class Application:
             self._opsgenie_client = OpsGenieClient(p_api_key=api_key)
         else:
             self._logger.warning(
-                'Kein OpsGenie API-Key verfuegbar (ENV oder 1Password). '
+                'Kein OpsGenie API-Key verfuegbar (1Password-Config fehlt). '
                 'OpsGenie-Import ist deaktiviert.'
             )
 

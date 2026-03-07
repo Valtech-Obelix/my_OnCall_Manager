@@ -36,6 +36,7 @@
 | CR-032 | Neu-Aktion leert Form nach abgebrochenem Loeschen | umgesetzt    | UC-018   | mittel    | 2026-03-05  | 2026-03-05   | [CR-032](./CR-032_Neu_Aktion_leert_Form_nach_abgebrochenem_Loeschen.md) |
 | CR-033 | Gehaltsklassenzuordnung zu Mitarbeitern mit Zeitraum | umgesetzt    | UC-019   | hoch      | 2026-03-05  | 2026-03-05   | [CR-033](./CR-033_Gehaltsklassenzuordnung_zu_Mitarbeitern_mit_Zeitraum.md) |
 | CR-034 | Legacy-Tabellen bereinigen | umgesetzt    | UC-019   | mittel    | 2026-03-05  | 2026-03-05   | [CR-034](./CR-034_Legacy_Tabellen_bereinigen.md) |
+| CR-035 | App-Version in UI anzeigen und About-Dialog mit Git-Metadaten | umgesetzt    | UC-023   | hoch      | 2026-03-07  | 2026-03-07   | [CR-035](./CR-035_App_Version_und_About_Dialog.md) |
 
 ## Statusdefinition
 
