@@ -4,6 +4,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Callable
+import pwd
 
 from src.infrastructure.runtime_paths import (
     opsgenie_config_example_path,
@@ -34,19 +35,35 @@ def load_opsgenie_api_key(
 
     op_env = _build_op_environment()
 
-    try:
-        result = subprocess.run(
-            [op_binary, "read", op_ref],
-            check=True,
-            capture_output=True,
-            text=True,
-            env=op_env,
-        )
-    except subprocess.CalledProcessError as ex:
+    commands = [[op_binary, "read", op_ref]]
+
+    account = _extract_opsgenie_account(op_ref)
+    if account:
+        commands.append([op_binary, "read", "--account", account, op_ref])
+
+    last_error: str | None = None
+    result: subprocess.CompletedProcess[str] | None = None
+
+    for command in commands:
+        try:
+            result = subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                text=True,
+                env=op_env,
+            )
+            break
+        except subprocess.CalledProcessError as ex:
+            last_error = (ex.stderr or "").strip()
+
+    if result is None:
         if p_logger_warning:
+            op_env_debug = {k: v for k, v in op_env.items() if k in {"HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "PATH", "USER", "LOGNAME"}}
+            p_logger_warning(f"1Password Umgebung: {op_env_debug}")
             p_logger_warning(
                 "OpsGenie API-Key konnte nicht aus 1Password gelesen werden. "
-                f"Bitte 1Password-Sitzung und Referenz prüfen. ({(ex.stderr or '').strip()})"
+                f"Bitte 1Password-Sitzung und Referenz prüfen. ({last_error})"
             )
         return None
 
@@ -110,18 +127,36 @@ def _load_opsgenie_api_key_ref(
 def _build_op_environment() -> dict[str, str]:
     env = os.environ.copy()
 
-    home = Path.home()
+    home = _resolve_home_dir()
     env.setdefault("HOME", str(home))
     if "XDG_CONFIG_HOME" not in env:
         env["XDG_CONFIG_HOME"] = str(home / ".config")
     if "XDG_DATA_HOME" not in env:
         env["XDG_DATA_HOME"] = str(home / ".local" / "share")
+    if "USER" not in env:
+        env["USER"] = ""
+    if not env["USER"]:
+        try:
+            env["USER"] = os.getlogin()
+        except OSError:
+            env["USER"] = pwd.getpwuid(os.getuid()).pw_name
 
     extra_paths = "/opt/homebrew/bin:/usr/local/bin"
     existing_path = env.get("PATH", "")
     env["PATH"] = f"{extra_paths}:{existing_path}" if existing_path else extra_paths
 
     return env
+
+
+def _resolve_home_dir() -> Path:
+    user = pwd.getpwuid(os.getuid())
+    fallback = Path(user.pw_dir)
+    if not fallback:
+        fallback = Path.home()
+
+    if not fallback.exists():
+        return Path.home()
+    return fallback
 
 
 def _load_config_payload(
@@ -172,4 +207,17 @@ def _extract_opsgenie_ref(p_config: dict) -> str | None:
         if normalized and not normalized.startswith("<") and not normalized.endswith(">"):
             return normalized
 
+    return None
+
+
+def _extract_opsgenie_account(op_ref: str) -> str | None:
+    if not op_ref.startswith("op://"):
+        return None
+    parts = op_ref.split("/", 3)
+    if len(parts) < 3:
+        return None
+
+    first = parts[2]
+    if first and "." in first and "1password" in first:
+        return first
     return None

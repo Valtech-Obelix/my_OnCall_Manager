@@ -42,6 +42,8 @@ ACTION_TEST_OVERTIME_COSTS             =   'Overtime Kosten testen'
 ACTION_TEST_ON_CALL_COSTS              =   'On Call Kosten testen'
 ACTION_BUDGET_BURNDOWN                 =   'Budget Burndown'
 ACTION_OPEN_BOOKING_FOLDER              =   'CSV-Ordner öffnen'
+ACTION_SHOW_CONFIG                     =   'Config anzeigen'
+ACTION_OPEN_CONFIG_DIR                 =   'Config-Ordner öffnen'
 ACTION_CLOSE                            =   'Schließen'
 ACTION_ABOUT                           =   'Über my_OnCall_Manager'
 
@@ -118,6 +120,12 @@ class MainWindow(QMainWindow):
         menu_bar = self.menuBar()
 
         file_menu = menu_bar.addMenu("Datei")
+        action_show_config = QAction(ACTION_SHOW_CONFIG, self)
+        action_show_config.triggered.connect(self._show_opsgenie_config)
+        file_menu.addAction(action_show_config)
+        action_open_config_dir = QAction(ACTION_OPEN_CONFIG_DIR, self)
+        action_open_config_dir.triggered.connect(self._open_opsgenie_config_dir)
+        file_menu.addAction(action_open_config_dir)
         action_close = QAction(ACTION_CLOSE, self)
         action_close.triggered.connect(self.close)
         file_menu.addAction(action_close)
@@ -261,6 +269,41 @@ class MainWindow(QMainWindow):
                 self,
                 APP_TITLE,
                 f"CSV-Ordner konnte nicht geoeffnet werden:\n{booking_folder}",
+            )
+
+    def _show_opsgenie_config(self):
+        config_path = self._application.get_opsgenie_config_path()
+        if not config_path.exists():
+            QMessageBox.information(
+                self,
+                APP_TITLE,
+                f"Keine OpsGenie-Config gefunden:\n{config_path}",
+            )
+            return
+
+        config_text = self._application.get_opsgenie_config_text()
+        if config_text is None:
+            QMessageBox.warning(
+                self,
+                APP_TITLE,
+                f"OpsGenie-Config konnte nicht gelesen werden:\n{config_path}",
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            APP_TITLE,
+            f"OpsGenie-Config ({config_path}):\n\n{config_text}",
+        )
+
+    def _open_opsgenie_config_dir(self):
+        config_dir = self._application.get_opsgenie_config_path().parent
+        opened = QDesktopServices.openUrl(QUrl.fromLocalFile(str(config_dir)))
+        if not opened:
+            QMessageBox.warning(
+                self,
+                APP_TITLE,
+                f"Config-Ordner konnte nicht geoeffnet werden:\n{config_dir}",
             )
 
     def _show_about_dialog(self):

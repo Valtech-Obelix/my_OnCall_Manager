@@ -20,6 +20,8 @@ from    src.infrastructure.gehaltsgruppe_repository         import  Gehaltsgrupp
 from    src.infrastructure.budget_repository               import  BudgetRepository
 from    src.infrastructure.secret_loader                    import  load_opsgenie_api_key
 from    src.infrastructure.runtime_paths                    import  user_booking_data_dir
+from    src.infrastructure.runtime_paths                    import  opsgenie_config_path
+from    src.infrastructure.app_version                        import  get_app_build_info
 from    src.services.gehaltsgruppe_service                 import  GehaltsgruppeService
 from    src.services.mitarbeiter_gehaltsgruppe_service     import  MitarbeiterGehaltsgruppeService
 from    src.services.mitarbeiter_aktivierung_service       import  MitarbeiterAktivierungService
@@ -30,9 +32,15 @@ class Application:
     def __init__(self):
         setup_logging()
         self._logger = logging.getLogger(__name__)
+        build_info = get_app_build_info()
+        build_version = build_info.get("version", "dev")
+        build_commit = build_info.get("commit", "unbekannt")
+        build_time = build_info.get("build_time", "unbekannt")
+
         self._logger.info('')
         self._logger.info('=====================')
         self._logger.info(" Application started ")
+        self._logger.info(f" Version: {build_version} | Build: {build_time} | Commit: {build_commit} ")
         self._logger.info('=====================')
         self._logger.info('')
 
@@ -163,6 +171,16 @@ class Application:
 
     def get_booking_data_dir(self) -> Path:
         return user_booking_data_dir()
+
+    def get_opsgenie_config_path(self) -> Path:
+        return opsgenie_config_path()
+
+    def get_opsgenie_config_text(self) -> str | None:
+        config_path = self.get_opsgenie_config_path()
+        try:
+            return config_path.read_text(encoding="utf-8")
+        except OSError:
+            return None
 
     # Ref: UC-009 – Aktive IA nach Schichtanzahl der letzten n Wochen
     def get_active_analyst_shift_counts_last_weeks(

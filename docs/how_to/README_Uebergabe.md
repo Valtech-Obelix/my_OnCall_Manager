@@ -14,6 +14,21 @@ Ergebnis:
 - App-Bundle: `dist/my_OnCall_Manager.app`
 - Zip für Weitergabe: `dist/my_OnCall_Manager-macOS.zip`
 
+### Release-Verantwortung: dist aktualisieren
+
+Nach jeder funktionalen Änderung **immer** neu bauen, damit die verteilte ZIP die aktuelle
+Version enthält.
+
+```bash
+./scripts/build_release.sh
+```
+
+Prüfen nach dem Build:
+- Neue `dist/my_OnCall_Manager-macOS.zip` im Ausgabeordner
+- Inhalt enthält die aktuellen Dateien aus `dist/my_OnCall_Manager.app` sowie den aktuellen
+  Start-Wrapper `dist/my_OnCall_Manager.command`
+- Versionsanzeige beim Appstart stimmt (z. B. mit `Über my_OnCall_Manager` und Log-Header)
+
 ## Was weitergegeben wird
 - `dist/my_OnCall_Manager-macOS.zip` (empfohlen) oder `dist/my_OnCall_Manager.app`
 - optional `docs/README_Uebergabe.md` als Betriebsnotiz
@@ -95,9 +110,71 @@ Damit bleibt der eigentliche Schlüssel in 1Password.
 
 Die App liest die Referenz aus `~/Library/Application Support/my_OnCall_Manager/opsgenie_config.json` via `op read`.
 
+## 1Password-CLI einrichten
+
+Voraussetzung für den automatischen Abruf aus `op://...` ist eine funktionierende 1Password-CLI-Sitzung auf dem Zielrechner.
+
+Einmalig pro Rechner (oder nach neuem Nutzerkonto):
+
+1. CLI installieren (falls noch nicht vorhanden):
+
+```bash
+brew install --cask 1password-cli
+```
+
+2. App-Integration in 1Password aktivieren (empfohlen):
+   - In der 1Password Desktop-App die Einstellungen öffnen
+   - Bereich **Entwickler** (Developer) aktivieren/integrieren
+   - Sicherstellen, dass der angemeldete Account für die CLI freigegeben ist
+
+3. Einmalig ein Konto anmelden:
+
+```bash
+op signin
+```
+
+4. Prüfung (muss auf dem Zielsystem im Startkontext funktionieren):
+
+```bash
+op account list
+op read "op://<Vault>/<Item>/<Feld>"
+```
+
+Wenn der Import in der Distribution nicht funktioniert, liegt in der Regel das CLI-Umfeld im App-Prozess nicht vor. In diesem Fall App über ein Terminal mit bestehender `op`-Sitzung starten.
+
+## Start der App mit funktionierender 1Password-Session (macOS)
+
+Falls im `.app`-Bundle weiterhin `No accounts configured for use with 1Password CLI` erscheint, ist die 1Password-Sitzung im App-Prozesskontext in der Regel nicht verfügbar.
+
+Starte die App dann direkt über `op run` aus einem Terminal, in dem die 1Password-CLI funktioniert:
+
+```bash
+./scripts/start_dist_with_op.sh
+```
+
+Das Wrapper-Skript startet direkt das App-Binary im `op run`-Kontext und hält damit die temporäre CLI-Sitzung für den Prozess.
+
+### Empfohlener Verteiler-Weg
+
+Das Build erzeugt zusätzlich:
+
+- `dist/my_OnCall_Manager.command`
+
+Diese Datei ist für Kolleg:innen gedacht, die keinen eigenen Dev-Workflow nutzen.  
+Sie startet die App im `op run`-Kontext ohne `python3 main.py`:
+
+```bash
+open dist/my_OnCall_Manager.command
+```
+
+oder Doppelklick auf die Datei.
+
 ### Voraussetzungen
 - 1Password CLI `op` ist installiert
 - Der Benutzer ist am `op`-CLI angemeldet
+- Wenn die App aus dem `.app`-Bundle gestartet wird (Finder/Launchpad), muss die 1Password-Sitzung ebenfalls im Prozesskontext vorhanden sein.
+  In einigen Umgebungen zeigt `op read` sonst `No accounts configured for use with 1Password CLI`.
+  Abhilfe: App einmalig aus einem Terminal starten, in dem `op signin` bereits ausgeführt wurde, oder `op` mit einem Service-Account-Token (`OP_SERVICE_ACCOUNT_TOKEN`) ausführen.
 
 Die App liest die Referenz aus der Datei via `op read`.
 
