@@ -1,0 +1,5 @@
+{
+  "opsgenie": {
+    "api_key_reference": "op://BC-SPORT.Team-Evoli/OpsGenie_API_my_OnCall_Manager/API_KEY"
+  }
+}

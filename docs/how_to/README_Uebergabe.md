@@ -51,37 +51,55 @@ Empfehlung für den Kollegen:
 Der Menüpunkt "OpsGenie Schichten importieren" ist nur aktiv, wenn
 ein OpsGenie API-Key verfuegbar ist.
 
-### Option A: Direkt per Umgebungsvariable
-
-Temporär (nur aktuelles Terminal):
+Die Konfiguration erfolgt über die App-Config-Datei:
 
 ```bash
-export OPS_GENIE_API_KEY="<dein-key>"
 open dist/my_OnCall_Manager.app
 ```
 
-### Option B: Bezug aus 1Password (empfohlen)
-
-Voraussetzungen:
-- 1Password CLI `op` ist installiert
-- Der Benutzer ist am `op`-CLI angemeldet
-
-Dann nur die Referenz setzen (der eigentliche Key bleibt in 1Password):
+Die App liest dazu die Datei:
 
 ```bash
-export OPS_GENIE_API_KEY_OP_REF="op://<Vault>/<Item>/<Feld>"
-open dist/my_OnCall_Manager.app
+~/Library/Application Support/my_OnCall_Manager/opsgenie_config.json
+```
+
+Falls die Datei nicht vorhanden ist, kannst du stattdessen die mitgelieferte
+Beispiel-Datei `opsgenie_config.example.json` im Projekt nutzen (z. B. nach
+`opsgenie_config.json` kopieren und die Referenz anpassen):
+
+```bash
+cp opsgenie_config.example.json ~/Library/Application Support/my_OnCall_Manager/opsgenie_config.json
+```
+
+Mit folgendem Inhalt:
+
+```json
+{
+  "opsgenie": {
+    "api_key_reference": "op://<Vault>/<Item>/<Feld>"
+  }
+}
 ```
 
 Beispiel:
 
-```bash
-export OPS_GENIE_API_KEY_OP_REF="op://Shared/OpsGenie/api_key"
-open dist/my_OnCall_Manager.app
+```json
+{
+  "opsgenie": {
+    "api_key_reference": "op://Shared/OpsGenie/api_key"
+  }
+}
 ```
 
-Die App versucht zuerst `OPS_GENIE_API_KEY`, danach `OPS_GENIE_API_KEY_OP_REF`
-ueber `op read`.
+Damit bleibt der eigentliche Schlüssel in 1Password.
+
+Die App liest die Referenz aus `~/Library/Application Support/my_OnCall_Manager/opsgenie_config.json` via `op read`.
+
+### Voraussetzungen
+- 1Password CLI `op` ist installiert
+- Der Benutzer ist am `op`-CLI angemeldet
+
+Die App liest die Referenz aus der Datei via `op read`.
 
 ## Plattformhinweis
 PyInstaller-Builds sind plattformspezifisch:

@@ -2,10 +2,10 @@ from datetime import date
 
 from PySide6.QtCharts import (
     QBarCategoryAxis,
-    QBarSeries,
-    QBarSet,
     QChart,
     QChartView,
+    QBarSeries,
+    QBarSet,
     QValueAxis,
 )
 from PySide6.QtGui import QPainter
@@ -22,10 +22,8 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -58,20 +56,9 @@ class BudgetManagementDialog(QDialog):
         self.resize(1180, 740)
 
         layout = QVBoxLayout()
-        tab_widget = QTabWidget()
-
-        manage_tab = QWidget()
-        manage_tab_layout = QVBoxLayout()
-        manage_tab_layout.addWidget(self._build_source_section())
-        manage_tab_layout.addWidget(self._build_period_section())
-        manage_tab.setLayout(manage_tab_layout)
-        tab_widget.addTab(manage_tab, "Budgetdaten")
-
-        timeline_tab = QWidget()
-        timeline_tab.setLayout(self._build_timeline_section())
-        tab_widget.addTab(timeline_tab, "Monatsverlauf")
-
-        layout.addWidget(tab_widget)
+        layout.addWidget(self._build_source_section())
+        layout.addWidget(self._build_period_section())
+        layout.addWidget(self._build_timeline_section())
 
         button_row = QHBoxLayout()
         button_row.addStretch()
@@ -204,32 +191,6 @@ class BudgetManagementDialog(QDialog):
 
         section.setLayout(layout)
         return section
-
-    def _build_timeline_section(self) -> QVBoxLayout:
-        layout = QVBoxLayout()
-
-        form = QHBoxLayout()
-        self._timeline_from_year = QSpinBox()
-        self._timeline_from_year.setRange(2020, 2100)
-        self._timeline_from_year.setValue(date.today().year)
-        self._timeline_to_year = QSpinBox()
-        self._timeline_to_year.setRange(2020, 2100)
-        self._timeline_to_year.setValue(date.today().year)
-        refresh_button = QPushButton("Ansicht aktualisieren")
-        refresh_button.clicked.connect(self._refresh_timeline)
-
-        form.addWidget(QLabel("Von Jahr:"))
-        form.addWidget(self._timeline_from_year)
-        form.addWidget(QLabel("Bis Jahr:"))
-        form.addWidget(self._timeline_to_year)
-        form.addWidget(refresh_button)
-        form.addStretch()
-        layout.addLayout(form)
-
-        self._timeline_chart_view.setRenderHint(QPainter.Antialiasing, True)
-        self._timeline_chart_view.setMinimumHeight(430)
-        layout.addWidget(self._timeline_chart_view)
-        return layout
 
     # ------------------------------------------------------------------
     # Quellen
@@ -376,6 +337,7 @@ class BudgetManagementDialog(QDialog):
         self._selected_period_id = None
         self._set_period_fields_enabled(bool(self._selected_source_id))
         self._set_primary_button(self._period_new_button)
+        self._refresh_timeline()
 
     def _on_period_selected(self) -> None:
         row = self._period_table.currentRow()
@@ -494,48 +456,62 @@ class BudgetManagementDialog(QDialog):
     # ------------------------------------------------------------------
     # Verlauf
     # ------------------------------------------------------------------
+    def _build_timeline_section(self) -> QGroupBox:
+        section = QGroupBox("Monatsverlauf")
+        layout = QVBoxLayout()
+
+        self._timeline_chart_view.setRenderHint(QPainter.Antialiasing, True)
+        self._timeline_chart_view.setMinimumHeight(320)
+        layout.addWidget(self._timeline_chart_view)
+        section.setLayout(layout)
+        return section
+
     def _refresh_timeline(self) -> None:
-        year_from = int(self._timeline_from_year.value())
-        year_to = int(self._timeline_to_year.value())
-        if year_to < year_from:
-            QMessageBox.warning(self, APP_TITLE, "Bis Jahr darf nicht kleiner als Von Jahr sein.")
+        self._timeline_chart.removeAllSeries()
+        for axis in list(self._timeline_chart.axes()):
+            self._timeline_chart.removeAxis(axis)
+
+        try:
+            periods = self._application.get_budget_active_periods()
+            if len(periods) == 0:
+                self._timeline_chart.setTitle("Monatsverlauf: Keine aktiven Budgetzeiträume")
+                return
+            start_date = min(date.fromisoformat(str(period["gueltig_ab"])) for period in periods)
+            end_date = max(date.fromisoformat(str(period["gueltig_bis"])) for period in periods)
+            rows = self._application.get_budget_timeline(start_date, end_date)
+        except DomainException as exc:
+            QMessageBox.warning(self, APP_TITLE, str(exc))
             return
 
-        rows = self._application.get_budget_timeline(
-            p_from=date(year_from, 1, 1),
-            p_to=date(year_to, 12, 31),
-        )
-        self._timeline_chart.removeAllSeries()
-        axis_x_existing = self._timeline_chart.axisX()
-        if axis_x_existing is not None:
-            self._timeline_chart.removeAxis(axis_x_existing)
-        axis_y_existing = self._timeline_chart.axisY()
-        if axis_y_existing is not None:
-            self._timeline_chart.removeAxis(axis_y_existing)
+        labels = [str(row.get("label", "")) for row in rows]
+        values = [float(row.get("amount_eur", 0.0) or 0.0) for row in rows]
+        if not labels:
+            self._timeline_chart.setTitle("Monatsverlauf: Keine Daten")
+            return
 
-        self._timeline_chart.setTitle("Monatsbudgetverlauf")
-        self._timeline_chart.legend().setVisible(False)
+        self._timeline_chart.setTitle("Monatsverlauf laut aktiven Budgetzeiträumen")
+        self._timeline_chart.legend().setVisible(True)
+        self._timeline_chart.legend().setAlignment(Qt.AlignBottom)
 
-        categories = [str(row.get("label", "")) for row in rows]
-        values = [float(row.get("amount_eur", 0.0)) for row in rows]
-
-        bar_set = QBarSet("Budget")
+        series = QBarSeries()
+        bar_set = QBarSet("Geplantes Budget / Monat")
         for value in values:
             bar_set.append(value)
-        series = QBarSeries()
         series.append(bar_set)
         self._timeline_chart.addSeries(series)
 
         axis_x = QBarCategoryAxis()
-        axis_x.append(categories)
+        axis_x.append(labels)
         self._timeline_chart.addAxis(axis_x, Qt.AlignBottom)
         series.attachAxis(axis_x)
 
-        max_value = max(values) if values else 0.0
         axis_y = QValueAxis()
         axis_y.setLabelFormat("%.2f EUR")
-        axis_y.setRange(0.0, max(1.0, max_value))
         axis_y.setMinorTickCount(0)
+        max_value = max(values) if values else 0.0
+        if max_value == 0.0:
+            max_value = 1.0
+        axis_y.setRange(0.0, max_value * 1.1)
         self._timeline_chart.addAxis(axis_y, Qt.AlignLeft)
         series.attachAxis(axis_y)
 

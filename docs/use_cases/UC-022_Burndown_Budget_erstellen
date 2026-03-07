@@ -1,0 +1,76 @@
+# UC-022 – Burndown Budget erstellen
+
+## Ziel
+Als Administrator möchte ich den Verbrauch eines aktivierten Budgetplans als Burndown-Verlauf darstellen, um frühzeitig zu erkennen, ob das Budget im Zeitverlauf planmäßig ausgeschöpft wird.
+
+## Modul-Zuordnung
+- UI: `src/ui/budget_management_dialog.py`, `src/ui/budget_burndown_dialog.py`
+- Anwendungsschicht: `src/app/application.py`
+- Services/Repository: `src/services/budget_service.py`, `src/infrastructure/budget_repository.py`
+- Einstellungspersistenz: `shift_repository` (bestehende `app_settings`)
+
+## Akteur
+- Administrator
+
+## Vorbedingungen
+- Mindestens eine aktive Budgetquelle ist vorhanden.
+- Mindestens ein aktiver Budgetzeitraum ist vorhanden.
+- Buchungsdaten (Client Utilized, Overtime, On Call) können für den Berechnungszeitraum geladen werden.
+
+## Trigger
+- Öffnen des Menüpunkts **Auswertung → Budget Burndown**.
+
+## Hauptablauf
+1. Dialog `Budget Burndown` wird geöffnet.
+2. Das System lädt alle aktiven Budgetzeiträume aus aktiven Quellen.
+3. Es wird der Gesamtzeitraum aus dem frühesten Start- und dem spätesten Enddatum bestimmt.
+4. Der Zeitraum wird wochenweise in Kalenderwochen `Mo–So` aufgeteilt.
+5. Für jede Woche wird der Planwert kumulativ berechnet:
+   - Anteil je Zeitraum = Budgetbetrag / Vertragsdauer in Monaten
+   - zeitanteilige Aufteilung auf die Tage der betreffenden Wochen.
+6. Tatsächliche Kosten werden pro Woche addiert aus:
+   - Client Utilized
+   - Overtime
+   - On Call
+7. Der Ist-Wert wird bis zum Ende der letzten vollständig abgeschlossenen Woche berechnet.
+8. Die Prognose startet ab letztem Ist-Wert und nutzt den Durchschnitt der letzten `n` Ist-Wochen
+   - `n` wird vom Nutzer über das Eingabefeld gepflegt.
+9. Das Diagramm zeigt drei Linien:
+   - `Plan` (grün, gestrichelt)
+   - `Ist` (schwarz, durchgezogen)
+   - `Forecast` (blau, gepunktet)
+10. Alle Linien werden in **Restbudget** (Gesamtbudget minus kumulierter Verbrauch) angezeigt.
+
+## Alternative Abläufe
+- **A1 – Kein aktiver Budgetzeitraum**
+  - Dialog zeigt Hinweis „Es ist kein aktives Budget vorhanden.“
+- **A2 – Gesamtbudget = 0**
+  - Dialog zeigt Hinweis „Das Gesamtbudget ist 0. Bitte Budgets korrigieren.“
+- **A3 – Keine Ist-Daten**
+  - Es wird nur `Plan` angezeigt, `Ist/Forecast` bleiben leer.
+- **A4 – Keine Daten in Dialog**
+  - Dialog zeigt „Keine Daten für Burndown vorhanden.“
+
+## Ergebnis
+- Der Administrator sieht eine zeitliche Restbudget-Kurve (Burndown) für den aktivierten Gesamtplan.
+- Die Darstellung ist auf Wochenbasis mit Datumsbeschriftungen im Format `tt.mm.jj`.
+- X-Achse beschriftet als `Zeit`, Y-Achse beschriftet als `Restbudget`.
+- Y-Achse Tick-Abstand ist 5.000.
+
+## UI-Integration
+- Neuer Menüeintrag unter **Auswertung**: `Budget Burndown`.
+- Neuer Dialog: `src/ui/budget_burndown_dialog.py`.
+
+## Technische Implementierung
+- Neue Anwendungsoberfläche:
+  - `Application.get_burndown_forecast_weeks()`
+  - `Application.set_burndown_forecast_weeks()`
+  - `Application.get_budget_burndown_data()`
+  - Hilfsmethoden: Wochen-Bucket-Bildung, Planrechnung, Istberechnung, Forecast-Berechnung
+- Service-/Repository-Erweiterung für aktive Perioden:
+  - `BudgetService.get_active_periods()`
+  - `BudgetService.get_active_budget_total()`
+  - `BudgetRepository.get_active_periods()`
+- Neuer Dialog in der Auswertung: `BudgetBurndownDialog` mit Steuerung „Anzahl der letzten Wochen, die für Prognose berücksichtigt werden sollen“.
+- Diagramm in Budgetverwaltung:
+  - Monatsverlauf als Balkendiagramm über aktive Budgetzeiträume.

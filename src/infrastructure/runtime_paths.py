@@ -8,6 +8,8 @@ DB_FILE_NAME = "my_oncall_manager.db"
 LOG_FILE_NAME = "my_oncall_manager.log"
 BOOKING_DATA_FOLDER = "data"
 SEED_DB_FOLDER = "seed"
+OPS_GENIE_CONFIG_FILE_NAME = "opsgenie_config.json"
+OPS_GENIE_CONFIG_EXAMPLE_FILE_NAME = "opsgenie_config.example.json"
 
 
 def _project_root() -> Path:
@@ -51,6 +53,14 @@ def db_file_path() -> Path:
 
 def log_file_path() -> Path:
     return user_data_dir() / LOG_FILE_NAME
+
+
+def opsgenie_config_path() -> Path:
+    return user_data_dir() / OPS_GENIE_CONFIG_FILE_NAME
+
+
+def opsgenie_config_example_path() -> Path:
+    return resource_path(OPS_GENIE_CONFIG_EXAMPLE_FILE_NAME)
 
 
 def resource_path(*parts: str) -> Path:
