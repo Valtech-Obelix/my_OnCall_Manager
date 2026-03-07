@@ -32,10 +32,7 @@ def load_opsgenie_api_key(
             )
         return None
 
-    op_env = os.environ.copy()
-    extra_paths = "/opt/homebrew/bin:/usr/local/bin"
-    existing_path = op_env.get("PATH", "")
-    op_env["PATH"] = f"{extra_paths}:{existing_path}" if existing_path else extra_paths
+    op_env = _build_op_environment()
 
     try:
         result = subprocess.run(
@@ -108,6 +105,23 @@ def _load_opsgenie_api_key_ref(
             )
         return None
     return ref
+
+
+def _build_op_environment() -> dict[str, str]:
+    env = os.environ.copy()
+
+    home = Path.home()
+    env.setdefault("HOME", str(home))
+    if "XDG_CONFIG_HOME" not in env:
+        env["XDG_CONFIG_HOME"] = str(home / ".config")
+    if "XDG_DATA_HOME" not in env:
+        env["XDG_DATA_HOME"] = str(home / ".local" / "share")
+
+    extra_paths = "/opt/homebrew/bin:/usr/local/bin"
+    existing_path = env.get("PATH", "")
+    env["PATH"] = f"{extra_paths}:{existing_path}" if existing_path else extra_paths
+
+    return env
 
 
 def _load_config_payload(
