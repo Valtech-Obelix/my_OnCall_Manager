@@ -33,6 +33,8 @@ ZIP_PATH="dist/my_OnCall_Manager-macOS.zip"
 if [[ -d "${APP_PATH}" ]]; then
   plutil -replace CFBundleShortVersionString -string "${APP_VERSION}" "${APP_PATH}/Contents/Info.plist"
   plutil -replace CFBundleVersion -string "${APP_VERSION}" "${APP_PATH}/Contents/Info.plist"
+  plutil -replace MyOnCallManagerBuildDate -string "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "${APP_PATH}/Contents/Info.plist"
+  plutil -replace MyOnCallManagerBuildCommit -string "$(git -C "${ROOT_DIR}" rev-parse --short HEAD 2>/dev/null || true)" "${APP_PATH}/Contents/Info.plist"
 
   echo "Creating zip archive..."
   ditto -c -k --sequesterRsrc --keepParent "${APP_PATH}" "${VERSIONED_ZIP_PATH}"
